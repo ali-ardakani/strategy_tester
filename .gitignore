@@ -1,0 +1,4 @@
+.venv
+env_test
+*.json
+*.ipynb
