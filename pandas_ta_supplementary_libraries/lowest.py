@@ -46,10 +46,5 @@ def lowest(src:pd.Series, length:int, candle:int=None) -> float or pd.Series:
         # Find the last 'length' candles from teh current candle.
         result = src.iloc[(candle+1-length):candle+1].min()
     else:
-        src.iloc[:length-1] = None
-        # Convert the series to a dataframe for accessing index of the row in lambda function.
-        result = src.reset_index().apply(lambda candle: src.iloc[candle.name+1-length:candle.name+1].min(), axis=1)
-        # Separate the desired column.
-        result = result.rename("lowest").reindex(src.index)
-    
+        result = src.rolling(window=length).min()
     return result

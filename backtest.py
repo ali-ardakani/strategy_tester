@@ -1,5 +1,6 @@
 from unittest import result
 import pandas as pd
+import numpy as np
 
 class Backtest:
     """ Class to backtest a strategy
@@ -42,7 +43,7 @@ class Backtest:
         Returns:
             float: Profit of trade
         """
-        profit = trades.profit_percent * trades.contract
+        profit = trades.profit * trades.contract
         return profit.sum(axis=0)
     
     @property
@@ -172,7 +173,7 @@ class Backtest:
         Returns:
             int: Total closed trades of strategy
         """
-        total_closed_trades = self.trades[self.trades.exit_date != 0].shape[0]
+        total_closed_trades = self.trades[~pd.isna(self.trades.exit_date)].shape[0]
         return total_closed_trades
     
     @property
@@ -416,7 +417,7 @@ class Backtest:
         Returns:
             float: Largest winning trade of strategy
         """
-        largest_wining_trade = self.trades.loc[self.trades.profit.idxmax()]
+        largest_wining_trade = self.trades.iloc[self.trades.profit_percent.idxmax()]
         return largest_wining_trade
     
     def _largest_lossing_trade(self) -> float:
@@ -425,7 +426,7 @@ class Backtest:
         Returns:
             float: Largest losing trade of strategy
         """
-        largest_lossing_trade = self.trades.loc[self.trades.profit.idxmin()]
+        largest_lossing_trade = self.trades.iloc[self.trades.profit_percent.idxmin()]
         return largest_lossing_trade
     
     def percentage_compared_to_initial_capital(self, src:float) -> float:
@@ -457,7 +458,7 @@ class Backtest:
             'gross_loss':self.gross_loss,
             'gross_loss_percent':self.gross_loss_percent,
             'max_draw_down':self.max_draw_down,
-            'buy_and_hold_return'
+            'buy_and_hold_return': self.buy_and_hold_return,
             'buy_and_hold_return_percent':self.buy_and_hold_return_percent,
             'profit_factor':self.profit_factor,
             'max_contract_held':self.max_contract_held,
@@ -476,6 +477,7 @@ class Backtest:
             'largest_wining_trade_percent':self.largest_wining_trade_percent,
             'largest_lossing_trade':self.largest_lossing_trade,
             'largest_lossing_trade_percent':self.largest_lossing_trade_percent,
+            'ratio_avg_win_divide_avg_lose':self.ratio_avg_win_divide_avg_lose,
             'avg_bars_in_trade':self.avg_bars_in_trade,
             'avg_bars_in_wining_trade':self.avg_bars_in_wining_trade,
             'avg_bars_in_losing_trade':self.avg_bars_in_losing_trade,

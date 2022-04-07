@@ -196,6 +196,7 @@ class StrategyTester:
             data = DataHandler(interval=strategy.interval).data
         else:
             data = DataHandler(data=data).data
+        data = data.reset_index(drop=True)
         strategy.data = data
         strategy.open = data.open
         strategy.high = data.high
