@@ -45,6 +45,9 @@ class StrategyTester:
         backtest()
     """
     
+    long = "long"
+    short = "short"
+    
     _cash = 10000
     interval = "15m"
     _commission = 0.0
