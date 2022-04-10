@@ -1,5 +1,5 @@
-__pycache__
-tmp
+__pycache__/
+tmp/
 .venv
 env_test
 *.json
