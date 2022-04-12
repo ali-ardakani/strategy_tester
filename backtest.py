@@ -25,9 +25,9 @@ class Backtest:
             bars_traded (int): Number of bars traded
 
     """
-    def __init__(self, trades:pd.DataFrame, candles:pd.DataFrame):
+    def __init__(self, trades:pd.DataFrame, candles:pd.DataFrame, initial_capital:float):
         self.trades = self._validate_trades(trades)
-        self.initial_capital = self._initial_capital(trades)
+        self.initial_capital = initial_capital
         if self._validate_candles(candles):
             self.start_candle = candles.iloc[0]
             self.end_candle = candles.iloc[-1]

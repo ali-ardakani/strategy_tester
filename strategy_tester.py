@@ -45,10 +45,11 @@ class StrategyTester:
         backtest()
     """
     
+    _cash = 10000
+    _initial_capital = 10000
     long = "long"
     short = "short"
-    
-    _cash = 10000
+
     interval = "15m"
     _commission = 0.0
     # Amount of commission paid 
@@ -57,6 +58,8 @@ class StrategyTester:
     open_positions = []
     closed_positions = []
     
+        
+        
     @property
     def cash(strategy):
         return strategy._cash
@@ -65,6 +68,7 @@ class StrategyTester:
     def cash(strategy, cash):
         if cash:
             strategy._cash = cash
+            strategy._initial_capital = cash
             
     @property
     def interval(strategy):
@@ -82,25 +86,6 @@ class StrategyTester:
     @commission.setter
     def commission(strategy, comm):
         strategy._commission = strategy._set_commission(comm)
-        
-    @property
-    def conditions(strategy):
-        return strategy._conditions
-    
-    @conditions.setter
-    def conditions(strategy, *conditions):
-        parts = [strategy.data]
-        parts.extend(*conditions)
-        strategy._conditions = pd.concat(parts, axis=1)
-        
-    def setdata(strategy, data: pd.DataFrame=None):
-        """ Set the data for the strategy tester.
-        Parameters
-        ----------
-        data: DataFrame
-            The data that you want to test the strategy with.
-        """
-        strategy._set_data(data)
         
     def entry(strategy,
               signal: str,
@@ -289,42 +274,6 @@ class StrategyTester:
         if not (qty>0 and qty<=1):
             raise ValueError("The quantity of the trade must be between 0 and 1.")
         return qty
-    
-    def trade(strategy, row):
-        """Execute the trade for the strategy.
-        
-        Description
-        -----------
-        This function is used to execute the trade for the strategy.
-        In this function, set the current candle and execute the trade_calc function.
-        
-        Parameters
-        ----------
-        row: DataFrame
-            The row of the data that you want to execute the trade for.
-        """
-        strategy.current_candle = row.name
-        strategy.trade_calc(row)
-        
-    def trade_calc(strategy, row):
-        """Check terms and open/close positions.
-        
-        Description
-        -----------
-        All conditions for entering the position are checked.
-        If the conditions are met, the position is opened.
-        If the conditions are not met, the position is closed.
-        
-        Parameters
-        ----------
-        row: DataFrame
-            The row of the data that you want to execute the trade for.
-        """
-        pass
-    
-    def run(strategy):
-        """Run the strategy."""
-        strategy.conditions.apply(strategy.trade, axis=1)
         
     def list_of_trades(strategy) -> list:
         """List of trades.
@@ -347,7 +296,7 @@ class StrategyTester:
         """
         trades = pd.DataFrame(strategy.closed_positions + strategy.open_positions)
         if strategy.closed_positions:
-            back_test = Backtest(trades, strategy.data)
+            back_test = Backtest(trades, strategy.data, strategy._initial_capital)
             result = back_test.result
             return result
         else:

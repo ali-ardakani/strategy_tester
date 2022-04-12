@@ -126,9 +126,9 @@ class DataHandler:
             
         # Check type of the date and close_time
         if np.issubdtype(data["date"], np.datetime64):
-            data["date"] = data["date"].astype(int)/10**6
+            data["date"] = data["date"].astype(np.int64)/10**6
         if np.issubdtype(data['close_time'], np.datetime64):
-            data['close_time'] = data['close_time'].astype(int)/10**6
+            data['close_time'] = data['close_time'].astype(np.int64)/10**6
             
         # Set interval
         self.interval = self._get_interval(data)
