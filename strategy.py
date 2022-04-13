@@ -38,13 +38,6 @@ class Strategy(StrategyTester, IndicatorsParallel):
         """
         strategy._set_data(data)
         
-    # def _indicator_parallel(strategy):
-    #     strategy.initial_indicators()
-    #     strategy.second_indicators()
-    #     strategy.indicators = strategy._initial_indicators.run()
-    #     _second_indicators = strategy._second_indicators.run()
-    #     strategy.indicators = pd.concat([strategy.indicators, _second_indicators], axis=1)
-        
     def indicators(strategy) -> None:
         """
         Description:
@@ -66,6 +59,20 @@ class Strategy(StrategyTester, IndicatorsParallel):
         """
         pass
     
+    def condition(strategy):
+        """
+        Description:
+            This function is called after the indicators are calculated.
+            You can use this function to set the conditions for the indicators.
+        
+        Example:
+            ```
+                entry_long = strategy.hma500 > strategy.sma200
+                entry_short = strategy.hma500 < strategy.sma200
+                strategy.conditions = entry_long, entry_short
+            ```
+        """
+        pass
     
     def trade(strategy, row):
         """Execute the trade for the strategy.

@@ -14,15 +14,14 @@ from pandas_ta_supplementary_libraries import *
 import numpy as np
 
 class SimpleStrategy(StrategyTester):
-    def __init__(strategy, data:pd.DataFrame):
-        # Set data
-        strategy.setdata(data)
-        # Set all initial parameters here
+
+    def indicators(strategy):
+        # Set all indicators here
         strategy.in_long = False
         strategy.in_short = False
-        ma = ta.sma(strategy.close, 100).rename("ma")
+        ma = Indicator("ma", ta.sma, args=(strategy.close, 100))
 
-        # Set constraints for the strategy
+    def condition(strategy):
         strategy.conditions = ma,
 
     def trade_calc(strategy, row):
