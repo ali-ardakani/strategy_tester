@@ -1,5 +1,5 @@
 from pandas import DataFrame
-from models.trade import Trade
+from strategy_tester.models.trade import Trade
 
 class CalculatorTrade:
     

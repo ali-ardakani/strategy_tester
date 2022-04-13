@@ -1,5 +1,5 @@
 from multiprocessing import Process, Queue
-from indicator import Indicator
+from .indicator import Indicator
 
 class IndicatorsParallel:
     """

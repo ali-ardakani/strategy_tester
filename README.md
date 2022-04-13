@@ -13,7 +13,7 @@ import pandas_ta as ta
 from pandas_ta_supplementary_libraries import *
 import numpy as np
 
-class SimpleStrategy(StrategyTester):
+class SimpleStrategy(Strategy):
 
     def indicators(strategy):
         # Set all indicators here
@@ -50,3 +50,7 @@ list_of_open_positions = strategy.open_positions
 # Get list of closed positions
 list_of_closed_positions = strategy.closed_positions
 ```
+
+## Repository
+[Github](https://github.com/ali-ardakani/strategy_tester)
+[pypi](https://pypi.org/project/strategy-tester/)

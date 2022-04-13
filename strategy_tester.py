@@ -1,8 +1,8 @@
-from handler.datahandler import DataHandler
-from models.trade import Trade
+from .handler.datahandler import DataHandler
+from .models.trade import Trade
 import pandas as pd
-from commands.calculator_trade import CalculatorTrade
-from backtest import Backtest
+from .commands.calculator_trade import CalculatorTrade
+from .backtest import Backtest
 
 class StrategyTester:
     """ 

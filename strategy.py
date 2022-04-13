@@ -1,5 +1,5 @@
 from strategy_tester import StrategyTester
-from indicator import IndicatorsParallel
+from .indicator import IndicatorsParallel
 import pandas as pd
 class Strategy(StrategyTester, IndicatorsParallel):
     """
