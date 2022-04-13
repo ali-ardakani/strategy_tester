@@ -61,8 +61,9 @@ class IndicatorsParallel:
         """
         Set indicators.
         """
-        for indicator in indicators:
-            self.__dict__[indicator.name] = queue.get()
+        for _ in indicators:
+            returned = queue.get()
+            self.__dict__[returned.name] = returned
     
         
     def start(self):
