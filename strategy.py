@@ -19,7 +19,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         parts.extend(*conditions)
         strategy._conditions = pd.concat(parts, axis=1)
 
-    def __init__(strategy, data:pd.DataFrame=None) -> None:
+    def __init__(strategy) -> None:
         """ StrategyTester constructor.
 
         Description:
@@ -27,7 +27,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
             Then you can set the strategy and the data.
             All variables that need to be set are set in the constructor.
         """
-        strategy.setdata(data)
+        pass
         
     def setdata(strategy, data: pd.DataFrame=None):
         """ Set the data for the strategy tester.
@@ -37,6 +37,19 @@ class Strategy(StrategyTester, IndicatorsParallel):
             The data that you want to test the strategy with.
         """
         strategy._set_data(data)
+        
+    def set_parameters(strategy, **kwargs):
+        """Set the initial parameters for the strategy.
+        
+        Description:
+            This function is used to set the initial parameters for the strategy.
+        Parameters
+        ----------
+        kwargs: dict
+            The parameters that you want to set.
+        """
+        for key, value in kwargs.items():
+            strategy.__setattr__(key, value)
         
     def indicators(strategy) -> None:
         """
@@ -108,6 +121,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
     
     def run(strategy):
         """Run the strategy."""
+        strategy._set_init()
         strategy.indicators()
         strategy.start()
         strategy.condition()

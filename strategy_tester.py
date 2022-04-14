@@ -44,21 +44,20 @@ class StrategyTester:
         ----------
         backtest()
     """
-    
-    _cash = 10000
-    _initial_capital = 10000
-    long = "long"
-    short = "short"
+       
+    def _set_init(strategy):
+        strategy._cash = 10000
+        strategy._initial_capital = 10000
+        strategy.long = "long"
+        strategy.short = "short"
 
-    interval = "15m"
-    _commission = 0.0
-    # Amount of commission paid 
-    commission_paid = 0
-    current_candle = None
-    open_positions = []
-    closed_positions = []
-    
-        
+        strategy.interval = "15m"
+        strategy._commission = 0.0
+        # Amount of commission paid 
+        strategy.commission_paid = 0
+        strategy.current_candle = None
+        strategy.open_positions = []
+        strategy.closed_positions = []
         
     @property
     def cash(strategy):
