@@ -122,6 +122,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
     def run(strategy):
         """Run the strategy."""
         strategy._set_init()
+        strategy._set_init_indicators()
         strategy.indicators()
         strategy.start()
         strategy.condition()

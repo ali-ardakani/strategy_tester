@@ -1,4 +1,6 @@
 from multiprocessing import Process, Queue
+
+from strategy_tester import strategy
 from .indicator import Indicator
 
 class IndicatorsParallel:
@@ -9,11 +11,13 @@ class IndicatorsParallel:
     -----------
     This class calculates the indicators in multiple processes.
     """
-    list_of_indicators = []
-    queue_wait = Queue()
-    queue = Queue()
-    results = {}
+
         
+    def _set_init_indicators(self):
+        self.list_of_indicators = []
+        self.queue_wait = Queue()
+        self.queue = Queue()
+        self.results = {}
     def add(self, *indicators):
         """
         Add indicators to the list.
@@ -48,6 +52,7 @@ class IndicatorsParallel:
                 p = Process(target=self._wrapper, args=(indicator, queue_wait))
                 p.start()
             self._set_indicators(queue_wait, indicators_wait)
+            self.list_of_indicators -= indicators_wait
         indicators_n_wait = self.__format__("n-wait")
         queue_n_wait = Queue()
         if indicators_n_wait:
@@ -55,6 +60,7 @@ class IndicatorsParallel:
                 p = Process(target=self._wrapper, args=(indicator, queue_n_wait))
                 p.start()
             self._set_indicators(queue_n_wait, indicators_n_wait)
+            self.list_of_indicators -= indicators_n_wait
             
     
     def _set_indicators(self, queue:Queue, indicators:list):
@@ -64,6 +70,7 @@ class IndicatorsParallel:
         for _ in indicators:
             returned = queue.get()
             self.__dict__[returned.name] = returned
+            
     
         
     def start(self):
