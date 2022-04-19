@@ -1,4 +1,4 @@
-from numpy import isin
+import hashlib
 from . .handler.datahandler import DataHandler as dh
 import pandas as pd
 import os
@@ -17,24 +17,39 @@ class Indicator:
         self.args = args
         self.kwargs = kwargs
         
-    def _set_cache(self, src):
+    def _set_cache(self):
         """
         Set the cache for the strategy.
+        
+        Description:
+            This function using args and kwargs to generate the name chache and cache the result.
+        
+        Returns:
+            result: pd.Series or pd.DataFrame
         """
         if not os.path.exists('./cache/'):
             os.makedirs('./cache/')
-        start_time = src.index[0]
-        end_time = src.index[-1]
-        interval = dh._get_interval(src)
+        # Generate the name of the cache file based on the args and kwargs
+        name = hashlib.sha256(str((self.args, self.kwargs)).encode()).hexdigest()
         result = self.func(*self.args, **self.kwargs).rename(self.name)
-        result.to_pickle('./cache/{}_{}_{}_{}.pickle'.format(self.name, interval, start_time, end_time))
+        result.to_pickle('./cache/{}.pickle'.format(name))
         return result
         
-    def _get_cache(self, src):
-        start_time = src.index[0]
-        end_time = src.index[-1]
-        interval = dh._get_interval(src)
-        path_cache = './cache/{}_{}_{}_{}.pickle'.format(self.name, interval, start_time, end_time)
+    def _get_cache(self):
+        """
+        Get the cache for the strategy.
+        
+        Description:
+            This function checks if the cache exists and returns the result.
+            If the cache does not exist, it returns False.
+        Returns:
+            exist: bool
+                True if the cache exists, False otherwise.
+            result: pd.Series or pd.DataFrame
+                The result of the cache.
+        """
+        name = hashlib.sha256(str((self.args, self.kwargs)).encode()).hexdigest()
+        path_cache = './cache/{}.pickle'.format(name)
         if os.path.exists(path_cache):
             result = pd.read_pickle(path_cache)
             return True, result
@@ -48,8 +63,8 @@ class Indicator:
         return self.name
 
     def __call__(self):
-        exist, result = self._get_cache(self.args[0])
+        exist, result = self._get_cache()
         if not exist:
             print("Entering cache")
-            result = self._set_cache(self.args[0])
+            result = self._set_cache()
         return result
