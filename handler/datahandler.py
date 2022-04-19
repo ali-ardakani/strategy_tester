@@ -1,3 +1,4 @@
+from unicodedata import name
 import pandas as pd
 from binance import Client
 import numpy as np
@@ -180,6 +181,9 @@ class DataHandler:
         str
             The interval of the data.
         """
+        if isinstance(data, pd.Series):
+            data = data.reset_index()
+            
         # Calculate the interval milliseconds
         interval = data.date.iloc[0:2].diff().iat[1]
         # Convert to interval string

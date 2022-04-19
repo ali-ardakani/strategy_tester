@@ -13,5 +13,5 @@ def crossunder(source1:pd.Series, source2:pd.Series) -> pd.DataFrame:
     # Determine True or False in the previous candle that source1 is higher than source2.
     is_higher = (source1 > source2).shift()
     # Determine in the current candle that is_higher and is_lower are True or False.
-    result = pd.Series(np.where(is_higher & is_lower, True, False), name='crossunder')
+    result = pd.Series((is_higher & is_lower), name='crossunder')
     return result

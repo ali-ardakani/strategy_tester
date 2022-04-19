@@ -1,6 +1,12 @@
 from strategy_tester import StrategyTester
 from .indicator import IndicatorsParallel
+from .encoder import NpEncoder
 import pandas as pd
+import json
+import os
+import time
+from .sheet import Sheet
+
 class Strategy(StrategyTester, IndicatorsParallel):
     """
     StrategyTester is a class that tests a strategy.
@@ -48,8 +54,34 @@ class Strategy(StrategyTester, IndicatorsParallel):
         kwargs: dict
             The parameters that you want to set.
         """
+        parameters = []
         for key, value in kwargs.items():
+            parameters.append((key, value))
             strategy.__setattr__(key, value)
+        strategy.parameters = tuple(parameters)
+            
+    def _set_cache(strategy):
+        """
+        Set the cache for the strategy.
+        """
+        if not os.path.exists('./cache/'):
+            os.makedirs('./cache/')
+        start_time = strategy.data.iloc[0].date
+        end_time = strategy.data.iloc[-1].date
+        interval = strategy.interval
+        strategy.conditions.to_pickle('./cache/{}_{}_{}_{}.pickle'.format(strategy.__class__.__name__, interval, start_time, end_time))
+        
+        
+    def _get_cache(strategy):
+        start_time = strategy.data.iloc[0].date
+        end_time = strategy.data.iloc[-1].date
+        interval = strategy.interval
+        path_cache = './cache/{}_{}_{}_{}.pickle'.format(strategy.__class__.__name__, interval, start_time, end_time)
+        if os.path.exists(path_cache):
+            strategy._conditions = pd.read_pickle(path_cache)
+            return True
+        else:
+            return False
         
     def indicators(strategy) -> None:
         """
@@ -119,10 +151,30 @@ class Strategy(StrategyTester, IndicatorsParallel):
         """
         pass
     
+    def add_to_sheet(strategy, sheet: Sheet) -> None:
+        """Add the strategy to the sheet.
+            
+            Parameters
+            ----------
+            sheet: Sheet
+                The sheet that you want to add the strategy to.
+            """
+        
+        backtest_result = json.dumps(list(strategy.backtest().values()), cls=NpEncoder)
+        backtest_result = json.loads(backtest_result)
+        sheet.add_row([[str(strategy.parameters)]+backtest_result])
+    
     def run(strategy):
         """Run the strategy."""
-        strategy._set_init()
-        strategy._set_init_indicators()
+        strategy.set_init()
+        # if not strategy._get_cache():
+        #     start_time = time.time()
+        #     strategy.indicators()
+        #     strategy.start()
+        #     strategy.condition()
+        #     strategy._set_cache()
+        #     end_time = time.time()
+        #     print('Time for indicators: {}'.format(end_time - start_time))
         strategy.indicators()
         strategy.start()
         strategy.condition()

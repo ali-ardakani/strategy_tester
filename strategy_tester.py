@@ -44,8 +44,8 @@ class StrategyTester:
         ----------
         backtest()
     """
-       
-    def _set_init(strategy):
+    
+    def set_init(strategy):
         strategy._cash = 10000
         strategy._initial_capital = 10000
         strategy.long = "long"
@@ -183,7 +183,8 @@ class StrategyTester:
             data = DataHandler(interval=strategy.interval).data
         else:
             data = DataHandler(data=data).data
-        data = data.reset_index(drop=True)
+        # data = data.reset_index(drop=True)
+        data.index = data.date
         strategy.data = data
         strategy.open = data.open
         strategy.high = data.high
@@ -257,7 +258,7 @@ class StrategyTester:
         """
         Calculate the current candle for the strategy.
         """
-        current_candle = strategy.data.iloc[strategy.current_candle]
+        current_candle = strategy.data.loc[strategy.current_candle]
         return current_candle
     
     @staticmethod

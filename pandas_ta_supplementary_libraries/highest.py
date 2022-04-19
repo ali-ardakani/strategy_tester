@@ -35,5 +35,5 @@ def highest(src:pd.Series, length:int, candle:int=None) -> float or pd.Series:
         result = src.iloc[(candle+1-length):candle+1].max()
     else:
         result = src.rolling(window=length).max()
-    
+        # result.reset_index(drop=True, inplace=True)
     return result

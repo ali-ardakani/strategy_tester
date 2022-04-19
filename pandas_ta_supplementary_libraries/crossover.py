@@ -13,6 +13,6 @@ def crossover(source1:pd.Series, source2:pd.Series) -> pd.Series:
     # Determine True or False in the current candle that source2 is lower than source1.
     is_lower = (source1 < source2).shift()
     # Determine in the current candle that is_higher and is_lower are True or False.
-    result = pd.Series(np.where(is_higher & is_lower, True, False), name='crossover')
+    result = pd.Series((is_higher & is_lower), name='crossover')
     return result
 
