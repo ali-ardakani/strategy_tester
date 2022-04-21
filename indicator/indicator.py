@@ -30,7 +30,7 @@ class Indicator:
         if not os.path.exists('./cache/'):
             os.makedirs('./cache/')
         # Generate the name of the cache file based on the args and kwargs
-        name = hashlib.sha256(str((self.func, self.args, self.kwargs)).encode()).hexdigest()
+        name = f"{self.name}_{self.func.__name__}_{hashlib.sha256(str(self.args).encode('utf-8')).hexdigest()}_{hashlib.sha256(str(self.kwargs).encode('utf-8')).hexdigest()}"
         result = self.func(*self.args, **self.kwargs).rename(self.name)
         result.to_pickle('./cache/{}.pickle'.format(name))
         return result
@@ -48,7 +48,7 @@ class Indicator:
             result: pd.Series or pd.DataFrame
                 The result of the cache.
         """
-        name = hashlib.sha256(str((self.func, self.args, self.kwargs)).encode()).hexdigest()
+        name = f"{self.name}_{self.func.__name__}_{hashlib.sha256(str(self.args).encode('utf-8')).hexdigest()}_{hashlib.sha256(str(self.kwargs).encode('utf-8')).hexdigest()}"
         path_cache = './cache/{}.pickle'.format(name)
         if os.path.exists(path_cache):
             result = pd.read_pickle(path_cache)
@@ -65,6 +65,5 @@ class Indicator:
     def __call__(self):
         exist, result = self._get_cache()
         if not exist:
-            print("Entering cache")
             result = self._set_cache()
         return result

@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import math
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -10,3 +11,4 @@ class NpEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
+    

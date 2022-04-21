@@ -1,8 +1,12 @@
-from .handler.datahandler import DataHandler
-from .models.trade import Trade
+from strategy_tester.handler.datahandler import DataHandler
+from strategy_tester.models.trade import Trade
 import pandas as pd
-from .commands.calculator_trade import CalculatorTrade
-from .backtest import Backtest
+from strategy_tester.commands.calculator_trade import CalculatorTrade
+from strategy_tester.backtest import Backtest
+from strategy_tester.periodic import PeriodicCalc
+import json
+from strategy_tester.sheet import Sheet
+from strategy_tester.encoder import NpEncoder
 
 class StrategyTester:
     """ 
@@ -58,6 +62,7 @@ class StrategyTester:
         strategy.current_candle = None
         strategy.open_positions = []
         strategy.closed_positions = []
+        strategy.links_results = {}
         
     @property
     def cash(strategy):
@@ -157,7 +162,7 @@ class StrategyTester:
         qty = strategy._validate_qty(qty)
         if strategy.open_positions != []:
             trade = next((trade for trade in strategy.open_positions if trade.entry_signal == from_entry), None)
-            if trade:
+            if trade and strategy.current_candle < strategy.last_candle:
                 current_candle = strategy._current_candle_calc()
                 # Calculate parameters such as profit, draw down, etc.
                 data_trade = strategy.data.loc[strategy.data.date.between(trade.entry_date, current_candle.close_time)]
@@ -191,6 +196,7 @@ class StrategyTester:
         strategy.low = data.low
         strategy.close = data.close
         strategy.volume = data.volume
+        strategy.last_candle = data.date.iloc[-1]
         
     @staticmethod
     def _set_commission(commission: float):
@@ -301,3 +307,48 @@ class StrategyTester:
             return result
         else:
             raise ValueError("There are no closed positions.")
+        
+    def periodic_calc(strategy, days: int=30, sheet:Sheet=None) -> dict:
+        """
+        Calculate the periodic returns of the strategy.
+        
+        Description
+        -----------
+        After the strategy is tested, if you want to calculate the periodic returns of the strategy, you can use this function.
+        
+        Parameters
+        ----------
+        days: int
+            The number of days that you want to calculate the periodic returns for.(default: 30 days)
+        sheet: gspread.Spreadsheet
+            The sheet that you want to save the results to.
+            
+        Returns
+        -------
+        results : dict
+            The periodic returns of the strategy.       
+        """
+        if not isinstance(days, int):
+            raise ValueError("The days must be an integer.")
+        
+        periodic_obj = PeriodicCalc(
+            initial_capital=strategy._initial_capital, 
+            trades=pd.DataFrame(strategy.closed_positions), 
+            data=strategy.data, 
+            days=days)
+        
+        results_objs = periodic_obj.results
+        
+        if sheet:
+            
+            for column, result in results_objs.items():
+                new_sheet = Sheet(sheet.sheet.title, sheet.service_account, sheet.email, worksheet_name=column)
+                backtest_result = result.values()
+                new_sheet.add_row([backtest_result])
+                sheet_id = new_sheet.sheet.id
+                worksheet_id = new_sheet.worksheet.id
+                strategy.links_results[column] = '=HYPERLINK("https://docs.google.com/spreadsheets/d/{}/edit#gid={}", "{}")'.format(sheet_id, worksheet_id, result["net_profit_percent"])
+        
+        return results_objs
+            
+        

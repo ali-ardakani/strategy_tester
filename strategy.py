@@ -1,3 +1,4 @@
+from random import seed
 from strategy_tester import StrategyTester
 from .indicator import IndicatorsParallel
 from .encoder import NpEncoder
@@ -160,9 +161,12 @@ class Strategy(StrategyTester, IndicatorsParallel):
                 The sheet that you want to add the strategy to.
             """
         
-        backtest_result = json.dumps(list(strategy.backtest().values()), cls=NpEncoder)
-        backtest_result = json.loads(backtest_result)
-        sheet.add_row([[str(strategy.parameters)]+backtest_result])
+        backtest_result = strategy.backtest().values()
+        if strategy.links_results:
+            sheet.add_columns_names(list(strategy.links_results.keys()))
+            sheet.add_row([list(backtest_result) + list(strategy.links_results.values())])
+        else:
+            sheet.add_row([list(backtest_result)])#[str(strategy.parameters)]+
     
     def run(strategy):
         """Run the strategy."""

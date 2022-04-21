@@ -417,7 +417,7 @@ class Backtest:
         Returns:
             float: Largest winning trade of strategy
         """
-        largest_wining_trade = self.trades.iloc[self.trades.profit_percent.idxmax()]
+        largest_wining_trade = self.trades.loc[self.trades.profit_percent.idxmax()]
         return largest_wining_trade
     
     def _largest_lossing_trade(self) -> float:
@@ -426,7 +426,7 @@ class Backtest:
         Returns:
             float: Largest losing trade of strategy
         """
-        largest_lossing_trade = self.trades.iloc[self.trades.profit_percent.idxmin()]
+        largest_lossing_trade = self.trades.loc[self.trades.profit_percent.idxmin()]
         return largest_lossing_trade
     
     def percentage_compared_to_initial_capital(self, src:float) -> float:
