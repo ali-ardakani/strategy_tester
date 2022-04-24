@@ -70,7 +70,11 @@ class Sheet:
         if not title:
             title = dt.now().strftime("%Y/%m/%d_%H-%M-%S")
         else:
-            title = title.strftime("%Y/%m/%d_%H-%M-%S")
+            if isinstance(title, str):
+                time_ = dt.now().strftime("%H-%M-%S")
+                title = title+"_"+time_
+            else:
+                title = title.strftime("%Y/%m/%d_%H-%M-%S")
         try:
             worksheet = self.sheet.add_worksheet(title, 1, 1)
         except gspread.exceptions.APIError:
@@ -90,7 +94,7 @@ class Sheet:
         
         :rtype: :list
         """
-        names_of_columns = ['initial_capital', 'net_profit', 'net_profit_percent', 'gross_profit', 'gross_profit_percent', 'gross_loss', 'gross_loss_percent', 'max_draw_down', 'buy_and_hold_return', 'buy_and_hold_return_percent', 'profit_factor', 'max_contract_held', 'total_closed_trades', 'total_open_trades', 'number_wining_trades', 'number_losing_trades', 'percent_profitable', 'avg_trade', 'avg_trade_percent', 'avg_wining_trade', 'avg_wining_trade_percent', 'avg_losing_trade', 'avg_losing_trade_percent', 'largest_wining_trade', 'largest_wining_trade_percent', 'largest_lossing_trade', 'largest_lossing_trade_percent', 'ratio_avg_win_divide_avg_lose', 'avg_bars_in_trade', 'avg_bars_in_wining_trade', 'avg_bars_in_losing_trade']
+        names_of_columns = ['parameters', 'initial_capital', 'net_profit', 'net_profit_percent', 'gross_profit', 'gross_profit_percent', 'gross_loss', 'gross_loss_percent', 'max_draw_down', 'buy_and_hold_return', 'buy_and_hold_return_percent', 'profit_factor', 'max_contract_held', 'total_closed_trades', 'total_open_trades', 'number_wining_trades', 'number_losing_trades', 'percent_profitable', 'avg_trade', 'avg_trade_percent', 'avg_wining_trade', 'avg_wining_trade_percent', 'avg_losing_trade', 'avg_losing_trade_percent', 'largest_wining_trade', 'largest_wining_trade_percent', 'largest_lossing_trade', 'largest_lossing_trade_percent', 'ratio_avg_win_divide_avg_lose', 'avg_bars_in_trade', 'avg_bars_in_wining_trade', 'avg_bars_in_losing_trade']
         self.worksheet.append_row(names_of_columns)
         self._update_worksheet()
         self.columns = names_of_columns
@@ -130,7 +134,6 @@ class Sheet:
 
         :rtype: :None
         """
-        print(rows)
         rows = self._serialize(rows)
         self.worksheet.append_rows(rows, value_input_option='USER_ENTERED')
         self._update_worksheet()

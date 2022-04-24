@@ -164,9 +164,9 @@ class Strategy(StrategyTester, IndicatorsParallel):
         backtest_result = strategy.backtest().values()
         if strategy.links_results:
             sheet.add_columns_names(list(strategy.links_results.keys()))
-            sheet.add_row([list(backtest_result) + list(strategy.links_results.values())])
+            sheet.add_row([[str(strategy.parameters)]+list(backtest_result) + list(strategy.links_results.values())])
         else:
-            sheet.add_row([list(backtest_result)])#[str(strategy.parameters)]+
+            sheet.add_row([[str(strategy.parameters)]+list(backtest_result)])#[str(strategy.parameters)]+
     
     def run(strategy):
         """Run the strategy."""
