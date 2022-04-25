@@ -326,19 +326,19 @@ class StrategyTester:
                       sheet.service_account,
                       sheet.email,
                       worksheet_name=re.sub("_.*", "", sheet.worksheet.title))
+        results = []
         for column, result in results_objs.items():
             backtest_result = result.values()
-            sheet.add_row([[str(column)] + list(backtest_result)])
+            print(sheet._serialize([[str(column)] + list(backtest_result)]))
+            results.append()
             sheet_id = sheet.sheet.id
             worksheet_id = sheet.worksheet.id
             strategy.links_results[
                 column] = '=HYPERLINK("https://docs.google.com/spreadsheets/d/{}/edit#gid={}", "{}")'.format(
                     sheet_id, worksheet_id, result["net_profit_percent"])
+        sheet.worksheet.append_rows(results)
 
-    def periodic_calc(strategy,
-                      days: int = 30,
-                      sheet: Sheet = None,
-                      parameters=None) -> dict:
+    def periodic_calc(strategy, days: int = 30, sheet: Sheet = None) -> dict:
         """
         Calculate the periodic returns of the strategy.
         

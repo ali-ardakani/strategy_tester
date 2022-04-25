@@ -9,8 +9,10 @@ class IndicatorsParallel:
     -----------
     This class calculates the indicators in multiple processes.
     """
-    list_of_indicators = []
-    results = {}
+
+    def _init_indicator(self):
+        self.list_of_indicators = []
+        self.results = {}
         
     def add(self, *indicators):
         """
