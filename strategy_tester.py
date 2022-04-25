@@ -65,6 +65,7 @@ class StrategyTester:
         strategy.open_positions = []
         strategy.closed_positions = []
         strategy.links_results = {}
+        strategy.threads_sheet = []
 
     @property
     def cash(strategy):
@@ -310,7 +311,7 @@ class StrategyTester:
             raise ValueError("There are no closed positions.")
 
     @staticmethod
-    def insert_sheet(strategy, sheet: Sheet, result: dict, column: tuple):
+    def insert_sheet(strategy, sheet: Sheet, results_objs: dict):
         """
         Insert the backtest result to the sheet.
         
@@ -321,13 +322,18 @@ class StrategyTester:
         result: dict
             The backtest result that you want to insert to the sheet.
         """
-        backtest_result = result.values()
-        sheet.add_row([[str(column)] + list(backtest_result)])
-        sheet_id = sheet.sheet.id
-        worksheet_id = sheet.worksheet.id
-        strategy.links_results[
-            column] = '=HYPERLINK("https://docs.google.com/spreadsheets/d/{}/edit#gid={}", "{}")'.format(
-                sheet_id, worksheet_id, result["net_profit_percent"])
+        sheet = Sheet(sheet.sheet.title,
+                      sheet.service_account,
+                      sheet.email,
+                      worksheet_name=re.sub("_.*", "", sheet.worksheet.title))
+        for column, result in results_objs.items():
+            backtest_result = result.values()
+            sheet.add_row([[str(column)] + list(backtest_result)])
+            sheet_id = sheet.sheet.id
+            worksheet_id = sheet.worksheet.id
+            strategy.links_results[
+                column] = '=HYPERLINK("https://docs.google.com/spreadsheets/d/{}/edit#gid={}", "{}")'.format(
+                    sheet_id, worksheet_id, result["net_profit_percent"])
 
     def periodic_calc(strategy,
                       days: int = 30,
@@ -364,23 +370,8 @@ class StrategyTester:
         results_objs = periodic_obj.results
 
         if sheet:
-            new_sheet = Sheet(sheet.sheet.title,
-                              sheet.service_account,
-                              sheet.email,
-                              worksheet_name=re.sub("_.*", "",
-                                                    sheet.worksheet.title))
-            threads = []
-            for column, result in results_objs.items():
-                thread = Thread(target=strategy.insert_sheet, args=(strategy, new_sheet, result, column))
-                thread.start()
-                threads.append(thread)
-                # backtest_result = result.values()
-                # new_sheet.add_row([[str(column)] + list(backtest_result)])
-                # sheet_id = new_sheet.sheet.id
-                # worksheet_id = new_sheet.worksheet.id
-                # strategy.links_results[
-                #     column] = '=HYPERLINK("https://docs.google.com/spreadsheets/d/{}/edit#gid={}", "{}")'.format(
-                #         sheet_id, worksheet_id, result["net_profit_percent"])
-            for thread in threads:
-                thread.join()
+            thread = Thread(target=strategy.insert_sheet,
+                            args=(strategy, sheet, results_objs))
+            strategy.threads_sheet.append(thread)
+
         return results_objs

@@ -3,7 +3,7 @@ from strategy_tester import StrategyTester
 from .indicator import IndicatorsParallel
 from .encoder import NpEncoder
 import pandas as pd
-import json
+from threading import Thread
 import os
 import time
 from .sheet import Sheet
@@ -151,7 +151,21 @@ class Strategy(StrategyTester, IndicatorsParallel):
             The row of the data that you want to execute the trade for.
         """
         pass
-    
+
+    def _insert_main_to_sheet(strategy, sheet: Sheet, thread:Thread=None) -> None:
+        """Add the main backtest result to sheet."""
+        if thread:
+            # Wait for all of threads created by the periodical function to finish.
+            while thread.is_alive():
+                pass
+            
+        backtest_result = strategy.backtest().values()
+        if strategy.links_results:
+            sheet.add_columns_names(list(strategy.links_results.keys()))
+            sheet.add_row([[str(strategy.parameters)]+list(backtest_result) + list(strategy.links_results.values())])
+        else:
+            sheet.add_row([[str(strategy.parameters)]+list(backtest_result)])
+
     def add_to_sheet(strategy, sheet: Sheet) -> None:
         """Add the strategy to the sheet.
             
@@ -161,24 +175,17 @@ class Strategy(StrategyTester, IndicatorsParallel):
                 The sheet that you want to add the strategy to.
             """
         
-        backtest_result = strategy.backtest().values()
-        if strategy.links_results:
-            sheet.add_columns_names(list(strategy.links_results.keys()))
-            sheet.add_row([[str(strategy.parameters)]+list(backtest_result) + list(strategy.links_results.values())])
-        else:
-            sheet.add_row([[str(strategy.parameters)]+list(backtest_result)])#[str(strategy.parameters)]+
-    
+        # Run the all of threads created by the periodical function before starting the _insert_main_to_sheet function.
+        for thread in strategy.threads_sheet:
+            thread.start()
+
+        thread_main = Thread(target=strategy._insert_main_to_sheet, args=(sheet, thread))
+        thread_main.start()
+
+
     def run(strategy):
         """Run the strategy."""
         strategy.set_init()
-        # if not strategy._get_cache():
-        #     start_time = time.time()
-        #     strategy.indicators()
-        #     strategy.start()
-        #     strategy.condition()
-        #     strategy._set_cache()
-        #     end_time = time.time()
-        #     print('Time for indicators: {}'.format(end_time - start_time))
         strategy.indicators()
         strategy.start()
         strategy.condition()
