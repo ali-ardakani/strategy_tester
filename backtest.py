@@ -113,7 +113,7 @@ class Backtest:
         Returns:
             float: Maximum draw down of strategy
         """
-        draw_down = self.trades.draw_down.max()
+        draw_down = self.trades.draw_down.min()
         return draw_down
     
     @property
@@ -143,7 +143,7 @@ class Backtest:
         Returns:
             float: Buy and hold return percentage of strategy
         """
-        buy_and_hold_return_percent = self.percentage_compared_to_initial_capital(self.buy_and_hold_return)
+        buy_and_hold_return_percent = self.buy_and_hold_return*100/self.start_candle.open
         return buy_and_hold_return_percent
 
     @property
@@ -233,7 +233,7 @@ class Backtest:
         Returns:
             float: Average trade percentage of strategy
         """
-        avg_trade_percent = self.percentage_compared_to_initial_capital(self.avg_trade)
+        avg_trade_percent = self.trades.profit_percent.mean()
         return avg_trade_percent
     
     @property
@@ -253,7 +253,7 @@ class Backtest:
         Returns:
             float: Average winning trade percentage of strategy
         """
-        avg_wining_trade_percent = self.percentage_compared_to_initial_capital(self.avg_wining_trade)
+        avg_wining_trade_percent = self.trades[self.trades.profit_percent > 0].profit_percent.mean()
         return avg_wining_trade_percent
     
     @property
@@ -273,7 +273,7 @@ class Backtest:
         Returns:
             float: Average losing trade percentage of strategy
         """
-        avg_losing_trade_percent = self.percentage_compared_to_initial_capital(self.avg_losing_trade)
+        avg_losing_trade_percent = self.trades[self.trades.profit_percent <= 0].profit_percent.mean()
         return avg_losing_trade_percent
     
     @property
