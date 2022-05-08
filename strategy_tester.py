@@ -361,9 +361,11 @@ class StrategyTester:
         if not isinstance(days, int):
             raise ValueError("The days must be an integer.")
 
+        trades = pd.DataFrame(strategy.closed_positions)
+        if trades.empty:
+            return None
         periodic_obj = PeriodicCalc(initial_capital=strategy._initial_capital,
-                                    trades=pd.DataFrame(
-                                        strategy.closed_positions),
+                                    trades=trades,
                                     data=strategy.data,
                                     days=days)
 
