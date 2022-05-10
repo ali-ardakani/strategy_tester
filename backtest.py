@@ -223,7 +223,7 @@ class Backtest:
         Returns:
             float: Average trade of strategy
         """
-        avg_trade = self.trades.profit.mean()
+        avg_trade = (self.trades.profit * self.trades.contract).mean()
         return avg_trade
     
     @property
@@ -243,7 +243,8 @@ class Backtest:
         Returns:
             float: Average winning trade of strategy
         """
-        avg_wining_trade = self.trades[self.trades.profit > 0].profit.mean()
+        win_profit = self.trades[self.trades.profit > 0]
+        avg_wining_trade = (win_profit.profit * win_profit.contract).mean()
         return avg_wining_trade
     
     @property
@@ -263,7 +264,8 @@ class Backtest:
         Returns:
             float: Average losing trade of strategy
         """
-        avg_losing_trade = self.trades[self.trades.profit <= 0].profit.mean()
+        lose_profit = self.trades[self.trades.profit <= 0]
+        avg_losing_trade = (lose_profit.profit * lose_profit.contract).mean()
         return avg_losing_trade
     
     @property

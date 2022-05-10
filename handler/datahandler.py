@@ -21,7 +21,7 @@ class DataHandler:
     intervals = {
         '1m': '6 months ago',
         '3m': '9 months ago',
-        '5m': '3 years ago',
+        '5m': '18 months ago',
         '15m': '2 years ago',
         '30m': '3 years ago',
         '1h': '4 years ago',
