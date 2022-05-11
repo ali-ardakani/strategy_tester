@@ -13,11 +13,13 @@ class PeriodicCalc:
     
     
     """
-    def __init__(self, initial_capital:float, trades:pd.DataFrame, data:pd.DataFrame, days:int):
+    def __init__(self, initial_capital:float, trades:pd.DataFrame, data:pd.DataFrame, days:int=None, start_date:str=None, end_date:str=None):
         self.initial_capital = initial_capital
         self.trades = self._valid_data(trades, key="entry_date")
         self.data = self._valid_data(data)
-        self.days = days
+        self.days = days if days else len(self.data)
+        self.start_date = start_date if start_date else None
+        self.end_date = end_date if end_date else self.data.date.max() # Get the last date
         self._backtests = {}
         self._results = {}
         self.backtest_calc()
@@ -44,8 +46,11 @@ class PeriodicCalc:
     def backtest_calc(self):
         """Calculate the backtest results for the given trades"""
         
-        # Group the data by days
-        steps = self.data.groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
+        if self.days:
+            # Group the data by days
+            steps = self.data.groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
+        else:
+            steps = self.data[(self.data.date >= self.start_date) & (self.data.date <= self.end_date)].groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
         for step in steps:
             # Get the trades for the current step
             trades = self._get_trades(data=step[1])

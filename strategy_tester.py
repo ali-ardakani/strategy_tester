@@ -338,7 +338,7 @@ class StrategyTester:
                     sheet_id, worksheet_id, result["net_profit_percent"])
         sheet.worksheet.append_rows(results)
 
-    def periodic_calc(strategy, days: int = 30, sheet: Sheet = None) -> dict:
+    def periodic_calc(strategy, days: int = None, start_date: str=None, end_date: str=None, sheet: Sheet = None) -> dict:
         """
         Calculate the periodic returns of the strategy.
         
@@ -358,7 +358,7 @@ class StrategyTester:
         results : dict
             The periodic returns of the strategy.       
         """
-        if not isinstance(days, int):
+        if days and not isinstance(days, int):
             raise ValueError("The days must be an integer.")
 
         trades = pd.DataFrame(strategy.closed_positions)
@@ -367,7 +367,9 @@ class StrategyTester:
         periodic_obj = PeriodicCalc(initial_capital=strategy._initial_capital,
                                     trades=trades,
                                     data=strategy.data,
-                                    days=days)
+                                    days=days,
+                                    start_date=start_date,
+                                    end_date=end_date)
 
         results_objs = periodic_obj.results
 
