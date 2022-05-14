@@ -1,5 +1,6 @@
 from multiprocessing import Process, Queue
 from .indicator import Indicator
+import os
 
 class IndicatorsParallel:
     """
@@ -11,6 +12,7 @@ class IndicatorsParallel:
     """
 
     def _init_indicator(self):
+        self.process = {}
         self.list_of_indicators = []
         self.results = {}
         
@@ -36,6 +38,11 @@ class IndicatorsParallel:
             if isinstance(arg, Indicator):
                 indicator.args[index] = self.__dict__[arg.name]
         queue.put(indicator())
+
+    def _live(self, name:str):
+        """
+        Check if indicator is running."""
+        return self.process[name].is_alive()
     
     def _start(self):
         """
@@ -57,6 +64,21 @@ class IndicatorsParallel:
                 p.start()
             self._set_indicators(queue_n_wait, indicators_n_wait)
             self._remove_indicators(indicators_n_wait)
+
+    # def _start(self):
+    #     """
+    #     Run indicators in parallel.
+    #     """
+    #     queue = Queue()
+    #     for indicator in self.list_of_indicators:
+    #         p = Process(target=self._wrapper, args=(indicator, queue))
+    #         p.start()
+
+    #         self.process[indicator.name] = p
+
+    #     list_i = self.list_of_indicators
+    #     self._set_indicators(queue, list_i)
+    #     self._remove_indicators(self.list_of_indicators)
             
     def _remove_indicators(self, indicators:list):
         """
@@ -94,3 +116,13 @@ class IndicatorsParallel:
         
         elif __format_spec == "wait":
             return [indicator for indicator in self.list_of_indicators if indicator.wait]
+
+    @staticmethod
+    def check_pid(pid):        
+        """ Check For the existence of a unix pid. """
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return True
+        else:
+            return False

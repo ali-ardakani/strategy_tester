@@ -46,11 +46,10 @@ class PeriodicCalc:
     def backtest_calc(self):
         """Calculate the backtest results for the given trades"""
         
-        if self.days:
-            # Group the data by days
-            steps = self.data.groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
-        else:
-            steps = self.data[(self.data.date >= self.start_date) & (self.data.date <= self.end_date)].groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
+        if self.start_date:
+            self.data = self.data[self.data.date >= self.start_date]
+
+        steps = self.data.groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
         for step in steps:
             # Get the trades for the current step
             trades = self._get_trades(data=step[1])
