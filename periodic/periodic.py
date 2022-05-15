@@ -15,7 +15,7 @@ class PeriodicCalc:
     """
     def __init__(self, initial_capital:float, trades:pd.DataFrame, data:pd.DataFrame, days:int=None, start_date:str=None, end_date:str=None):
         self.initial_capital = initial_capital
-        self.trades = self._valid_data(trades, key="entry_date")
+        self.trades = self._valid_trades(trades)
         self.data = self._valid_data(data)
         self.days = days if days else len(self.data)
         self.start_date = start_date if start_date else None
@@ -33,14 +33,34 @@ class PeriodicCalc:
     def backtests(self):
         """Get the backtests"""
         return self._backtests
-    
+
     @staticmethod
-    def _valid_data(data:pd.DataFrame, key:str='date'):
+    def _valid_trades(trades:pd.DataFrame):
+        """Validate the trades"""
+        if trades.empty:
+            raise ValueError("No trades found")
+        if not isinstance(trades, pd.DataFrame):
+            raise TypeError("The trades must be a pandas DataFrame")
+        if not isinstance(trades["entry_date"], np.datetime64):
+            trades["entry_date"] = pd.to_datetime(trades["entry_date"], unit="ms").round("1s")
+        if not isinstance(trades["exit_date"], np.datetime64):
+            trades["exit_date"] = pd.to_datetime(trades["exit_date"], unit="ms").round("1s")
+        return trades
+ 
+    
+    def _valid_data(self, data:pd.DataFrame, key:str='date'):
         """Check if the data is valid"""
         if data.empty:
             raise ValueError('No data available')
         elif not isinstance(data[key], np.datetime64):
             data[key] = pd.to_datetime(data[key], unit="ms").round("1s")
+
+        first_trade = self.trades.iloc[0]
+        last_trade = self.trades.iloc[-1]
+
+        data = data[(data.date >= first_trade.entry_date) & (data.date <= last_trade.exit_date if not pd.isnull(last_trade.exit_date) else True)]
+        if data.empty:
+            raise ValueError('No data available')
         return data
         
     def backtest_calc(self):
