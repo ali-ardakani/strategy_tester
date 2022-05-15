@@ -54,13 +54,7 @@ class PeriodicCalc:
             raise ValueError('No data available')
         elif not isinstance(data[key], np.datetime64):
             data[key] = pd.to_datetime(data[key], unit="ms").round("1s")
-
-        first_trade = self.trades.iloc[0]
-        last_trade = self.trades.iloc[-1]
-
-        data = data[(data.date >= first_trade.entry_date) & (data.date <= last_trade.exit_date if not pd.isnull(last_trade.exit_date) else True)]
-        if data.empty:
-            raise ValueError('No data available')
+            
         return data
         
     def backtest_calc(self):
