@@ -13,18 +13,19 @@ import re
 from strategy_tester.models import Trade
 from strategy_tester.commands import CalculatorTrade
 from .strategy import Strategy
+import math
 
-class User(Client, ThreadedWebsocketManager):
+class User(Client, Strategy):
 
     def __init__(strategy, api_key: str, api_secret: str, symbol: str, interval: str,
         requests_params: Optional[Dict[str, str]] = None, tld: str = 'com',
         testnet: bool = False, data: Optional[pd.DataFrame] = None
         ):
-        super(ThreadedWebsocketManager, strategy).__init__(api_key, api_secret)
         super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
+        strategy.threaded_websocket_manager = ThreadedWebsocketManager(api_key, api_secret)
         
         # Start the thread's activity.
-        strategy.start()
+        strategy.threaded_websocket_manager.start()
         
         # Create a tmp dataframe for add kline websocket data
         # In order to receive the data correctly 
@@ -43,6 +44,8 @@ class User(Client, ThreadedWebsocketManager):
         strategy._closed_positions = []
         strategy._in_bot = False # 
         strategy.start_trade = False
+
+        strategy.counter__ = 0
         
     @property
     def free_usdt(strategy):
@@ -50,7 +53,7 @@ class User(Client, ThreadedWebsocketManager):
         Get free USDT
         """
         usdt = next(item for item in strategy.futures_account_balance() if item["asset"] == "USDT")
-        return usdt
+        return float(usdt['withdrawAvailable'])
     
     @property
     def locked_usdt(strategy):
@@ -65,7 +68,7 @@ class User(Client, ThreadedWebsocketManager):
         Get free BTC
         """
         btc = next(item for item in strategy.futures_account_balance() if item["asset"] == "BTC")
-        return btc["withdrawAvailable"]
+        return float(btc["withdrawAvailable"])
     
     @property
     def locked_btc(strategy):
@@ -105,7 +108,7 @@ class User(Client, ThreadedWebsocketManager):
         else: # Get 5000 kline data
             num, period = re.match(r"([0-9]+)([a-z]+)", strategy.interval, re.I).groups()
             # Get <num> kline data ago
-            num = 100 * int(num)
+            num = 1500 * int(num)
             remind_kline = pd.DataFrame(strategy.get_historical_klines(strategy.symbol, strategy.interval, start_str=f"{num}{period} ago UTC")).iloc[:, :7]
             
         remind_kline.columns = ["date", "open", "high", "low", "close", "volume", "close_time"]
@@ -144,11 +147,11 @@ class User(Client, ThreadedWebsocketManager):
         # while True:
         #     try:
         #         # Start the websocket
-        #         strategy.stream = strategy.start_kline_socket(strategy._human_readable_kline, strategy.symbol, strategy.interval)
-        #         break
-        #     except AttributeError:
-        #         print("We had a problem configuring the websocket, another attempt will be made in 2 seconds.")
-        #         time.sleep(2)
+        strategy.stream = strategy.threaded_websocket_manager.start_kline_socket(strategy._human_readable_kline, strategy.symbol, strategy.interval)
+            #     break
+            # except AttributeError:
+            #     print("We had a problem configuring the websocket, another attempt will be made in 2 seconds.")
+            #     time.sleep(2)
         # try:
         #     # Start the websocket
         #     strategy.stream = strategy.start_kline_socket(strategy._human_readable_kline, strategy.symbol, strategy.interval)
@@ -158,6 +161,7 @@ class User(Client, ThreadedWebsocketManager):
         
         # Get remind kline data
         data = strategy._get_remind_kline(data)
+        print(len(data))
 
         return data
     
@@ -169,7 +173,7 @@ class User(Client, ThreadedWebsocketManager):
         
         if not strategy.tmp_data[strategy.tmp_data.date==last_kline_data.date].empty: # If the last candle in the historical kline is in the websocket data
             strategy.data.iloc[-1] = strategy.tmp_data[strategy.tmp_data.date==last_kline_data.date].iloc[0] # Replace the last candle in the historical kline with the websocket data
-        strategy.data = pd.concat([strategy.data, strategy.tmp_data[strategy.tmp_data.date>last_kline_data.date]]) # Add the websocket data to the historical kline
+        strategy.data = pd.concat([strategy.data, strategy.tmp_data[strategy.tmp_data.date>last_kline_data.date]]).iloc[1:] # Add the websocket data to the historical kline
         
     
     def _human_readable_kline(strategy, msg:dict):
@@ -183,7 +187,14 @@ class User(Client, ThreadedWebsocketManager):
             frame.index = frame['date']
             frame = frame.astype(float)
             strategy.tmp_data = pd.concat([strategy.tmp_data, frame], axis=0)
+            while strategy.data.empty:
+                pass
             strategy._combine_data()
+            strategy.high = strategy.data.high
+            strategy.low = strategy.data.low
+            strategy.open = strategy.data.open
+            strategy.close = strategy.data.close
+            strategy.volume = strategy.data.volume
             if strategy.start_trade:
                 strategy._init_indicator()
                 strategy.indicators()
@@ -194,7 +205,7 @@ class User(Client, ThreadedWebsocketManager):
     def entry(strategy,
               signal: str,
               direction: str,
-              percent_of_assets: float,
+              percent_of_assets: float=1,
               limit: float = None,
               stop: float = None,
               comment: str = None):
@@ -216,29 +227,31 @@ class User(Client, ThreadedWebsocketManager):
         comment : str
             The comment of the position.
         """
+        current_candle = strategy.data.loc[strategy.current_candle]
         if strategy.start_trade and strategy.data.date.iloc[-1] == current_candle["date"]:
-            if strategy._open_positions:
-                current_candle = strategy._current_candle_calc()
-                quantity = strategy.free_usdt * percent_of_assets / current_candle["close"]
-                
+            print("start")
+            print(strategy.open_positions)
+            if strategy.open_positions == []:
+                quantity = float(str(strategy.free_usdt * percent_of_assets * 0.99 / current_candle["close"])[:4])
+                print(quantity)
                 if direction == "long":
                     side = "BUY"
                 elif direction == "short":
                     side = "SELL"
                 
-                try:
-                    strategy.futures_create_order(symbol=strategy.interval, side=side, type='MARKET', quantity=quantity,
-                                            newOrderRespType='RESULT')
-                    trade = Trade(type=direction,
-                            entry_date=current_candle.close,
-                            entry_price=current_candle.close,
-                            entry_signal=direction,
-                            contract=quantity,
-                            comment=comment)
-                    print(f"Open Position with {trade.type} {trade.contract} contracts at {trade.entry_price}")
-                    strategy._open_positions.append(trade)
-                except BinanceAPIException as e:
-                    pass
+                # try:
+                strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                                        newOrderRespType='RESULT')
+                trade = Trade(type=direction,
+                        entry_date=current_candle.close,
+                        entry_price=current_candle.close,
+                        entry_signal=direction,
+                        contract=quantity,
+                        comment=comment)
+                print(f"Open Position with {trade.type} {trade.contract} contracts at {trade.entry_price}")
+                strategy._open_positions.append(trade)
+                # except BinanceAPIException as e:
+                #     pass
             
     def exit(strategy,
              from_entry: str,
@@ -265,6 +278,7 @@ class User(Client, ThreadedWebsocketManager):
         comment : str
             The comment of the position.
         """
+        current_candle = strategy.data.loc[strategy.current_candle]
         if strategy.start_trade and strategy.data.date.iloc[-1] == current_candle["date"]:
             open_position = [position for position in strategy.open_positions if position.entry_signal == from_entry]
             for position in open_position:
@@ -272,23 +286,22 @@ class User(Client, ThreadedWebsocketManager):
                     side = "SELL"
                 elif position.type == "short":
                     side = "BUY"
-                try:
-                    current_candle = strategy._current_candle_calc()
-                    # Calculate parameters such as profit, draw down, etc.
-                    data_trade = strategy.data.loc[strategy.data.date.between(
-                        position.entry_date, current_candle.close_time)]
-                    quantity = position.contract * qty
-                    strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                                            newOrderRespType='RESULT')
-                    position.exit_date = current_candle.close_time
-                    position.exit_price = current_candle.close
-                    print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
-                    position.exit_signal = signal
-                    CalculatorTrade(position, data_trade)
-                    strategy._open_positions.remove(position)
-                    strategy._closed_positions.append(position)
-                except BinanceAPIException as e:
-                    pass
+                # try:
+                # Calculate parameters such as profit, draw down, etc.
+                data_trade = strategy.data.loc[strategy.data.date.between(
+                    position.entry_date, current_candle.close_time)]
+                quantity = position.contract * qty
+                strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                                        newOrderRespType='RESULT')
+                position.exit_date = current_candle.close_time
+                position.exit_price = current_candle.close
+                print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
+                position.exit_signal = signal
+                CalculatorTrade(position, data_trade)
+                strategy._open_positions.remove(position)
+                strategy._closed_positions.append(position)
+                # except BinanceAPIException as e:
+                #     pass
             
     def _current_candle_calc(strategy):
         """
@@ -297,6 +310,10 @@ class User(Client, ThreadedWebsocketManager):
         
         current_candle = strategy.data.iloc[-1]
         return current_candle
+
+    def round_down(strategy, x, base=5):
+        """ Round down to the nearest 'base' """
+        return int(base * math.floor(float(x)/base))
         
     def run(strategy):
         """Run the strategy."""
