@@ -14,7 +14,7 @@ from strategy_tester.models import Trade
 from strategy_tester.commands import CalculatorTrade
 from .strategy import Strategy
 import math
-from telegram_bot import Manager
+from strategy_tester.telegram_bot import Manager
 
 class User(Client, Strategy):
 
