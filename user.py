@@ -23,6 +23,7 @@ class User(Client, Strategy):
         ):
         super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
         strategy.threaded_websocket_manager = ThreadedWebsocketManager(api_key, api_secret)
+        time.sleep(5)
         
         # Start the thread's activity.
         strategy.threaded_websocket_manager.start()
