@@ -7,6 +7,7 @@ from threading import Thread
 import os
 import time
 from .sheet import Sheet
+from datetime import datetime
 
 class Strategy(StrategyTester, IndicatorsParallel):
     """
@@ -182,6 +183,41 @@ class Strategy(StrategyTester, IndicatorsParallel):
         thread_main = Thread(target=strategy._insert_main_to_sheet, args=(sheet, thread))
         thread_main.start()
 
+    # def periodic_backtest(strategy, start_date:str=None, end_date:str=None) -> dict:
+    #TODO: Add the periodical backtest function.
+    #     """Calculate the backtest result for the specific period.
+        
+    #     Description
+    #     -----------
+    #     This function is used to calculate the backtest result for the specific period.
+    #     The backtest result is calculated by the backtest function.
+    #     The backtest result is stored in the dictionary.
+        
+    #     Parameters
+    #     ----------
+    #     start_date: str
+    #         The start date of the backtest.
+    #     end_date: str
+    #         The end date of the backtest.
+        
+    #     Returns
+    #     -------
+    #     dict
+    #         The backtest result for the specific period.
+    #     """
+    #     if not start_date and not end_date:
+    #         raise ValueError("start_date and end_date cannot be None at the same time.")
+
+    #     start_date = datetime.strptime(start_date, '%Y-%m-%d').timestamp()*1000 if start_date else None
+    #     end_date = datetime.strptime(end_date, '%Y-%m-%d').timestamp()*1000 if end_date else None
+
+    #     if start_date:
+    #         conditions = strategy.conditions[(strategy.data.date >= start_date)]
+    #     if end_date:
+    #         conditions = strategy.conditions[(strategy.data.date <= end_date)]
+
+    #     new_instance = conditions
+        
 
     def run(strategy):
         """Run the strategy."""
