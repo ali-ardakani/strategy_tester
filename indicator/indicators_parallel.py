@@ -11,6 +11,7 @@ class IndicatorsParallel:
     This class calculates the indicators in multiple processes.
     """
     manager = Manager()
+    _user = False
     
     def _init_indicator(self):
         self.processes = {}
@@ -22,6 +23,10 @@ class IndicatorsParallel:
         """
         Add indicators to the list.
         """
+        if self._user:
+            for indicator in indicators:
+                indicator.user = True
+            
         self.list_of_indicators.extend(indicators)
        
     def _wrapper(self, indicator:Indicator):

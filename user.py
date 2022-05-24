@@ -17,7 +17,9 @@ import math
 from strategy_tester.telegram_bot import Manager
 
 class User(Client, Strategy):
-
+    
+    _user = True
+    
     def __init__(strategy, api_key: str, api_secret: str, symbol: str, interval: str,
         requests_params: Optional[Dict[str, str]] = None, tld: str = 'com',
         testnet: bool = False, data: Optional[pd.DataFrame] = None,
@@ -148,21 +150,7 @@ class User(Client, Strategy):
             if np.issubdtype(data['close_time'], np.datetime64):
                 data['close_time'] = data['close_time'].astype(np.int64)/10**6
                      
-        # while True:
-        #     try:
-        #         # Start the websocket
         strategy.stream = strategy.threaded_websocket_manager.start_kline_socket(strategy._human_readable_kline, strategy.symbol, strategy.interval)
-            #     break
-            # except AttributeError:
-            #     print("We had a problem configuring the websocket, another attempt will be made in 2 seconds.")
-            #     time.sleep(2)
-        # try:
-        #     # Start the websocket
-        #     strategy.stream = strategy.start_kline_socket(strategy._human_readable_kline, strategy.symbol, strategy.interval)
-        # except AttributeError:
-        #     print("We had a problem configuring the websocket, another attempt will be made in 2 seconds.")
-        #     time.sleep(2)
-        
         # Get remind kline data
         data = strategy._get_remind_kline(data)
         print(len(data))

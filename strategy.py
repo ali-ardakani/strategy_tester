@@ -1,5 +1,6 @@
 from random import seed
 from strategy_tester import StrategyTester
+from strategy_tester.backtest import Backtest
 from .indicator import IndicatorsParallel
 from .encoder import NpEncoder
 import pandas as pd
@@ -217,6 +218,21 @@ class Strategy(StrategyTester, IndicatorsParallel):
     #         conditions = strategy.conditions[(strategy.data.date <= end_date)]
 
     #     new_instance = conditions
+        
+    def result(strategy):
+        """
+        Description:
+            Return the backtest with the specific parameters.
+        
+        Returns:
+            dict
+                The backtest result.
+        """
+        backtest = strategy.backtest
+        if not isinstance(backtest, Backtest):
+            return pd.Series(dict(strategy.parameters))
+        else:
+            return pd.Series(backtest.result|dict(strategy.parameters))
         
 
     def run(strategy):

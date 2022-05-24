@@ -289,8 +289,12 @@ class StrategyTester:
         list
             The list of all the open trades and closed trades.
         """
-        return strategy.closed_positions + strategy.open_positions
+        trades = pd.DataFrame(strategy.closed_positions + strategy.open_positions)
+        trades.entry_date = pd.to_datetime(trades.entry_date, unit="ms").round("1s")
+        trades.exit_date = pd.to_datetime(trades.exit_date, unit="ms").round("1s")
+        return trades
 
+    @property
     def backtest(strategy) -> dict:
         """
         Calculate the backtest of the strategy.
@@ -305,10 +309,9 @@ class StrategyTester:
         if strategy.closed_positions:
             back_test = Backtest(trades, strategy.data,
                                  strategy._initial_capital)
-            result = back_test.result
-            return result
+            return back_test
         else:
-            raise ValueError("There are no closed positions.")
+            return "There are no closed positions."
 
     @staticmethod
     def insert_sheet(strategy, sheet: Sheet, results_objs: dict):

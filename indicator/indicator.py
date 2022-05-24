@@ -9,11 +9,12 @@ class Indicator:
     Description:
         This class is used to create an indicator for use in class IndicatorsParallel.
     """
-    def __init__(self, name:str, func:callable, args=None, wait=True, **kwargs):
+    def __init__(self, name:str, func:callable, args=None, wait=True, user=False, **kwargs):
         """ Initialize the indicator """
         self.name = name
         self.func = func
         self.wait = wait
+        self.user = user
         self.args = args
         self.kwargs = kwargs
         
@@ -77,7 +78,10 @@ class Indicator:
         return self.name
 
     def __call__(self):
-        exist, result = self._get_cache()
-        if not exist:
-            result = self._set_cache()
-        return result
+        if self.user:
+            return self.func(*self.args, **self.kwargs).rename(self.name)
+        else:
+            exist, result = self._get_cache()
+            if not exist:
+                result = self._set_cache()
+            return result
