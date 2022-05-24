@@ -233,11 +233,8 @@ class User(Client, Strategy):
         """
         current_candle = strategy.data.loc[strategy.current_candle]
         if strategy.start_trade and strategy.data.date.iloc[-1] == current_candle["date"]:
-            print("start")
-            print(strategy.open_positions)
             if strategy.open_positions == []:
                 quantity = float(str(strategy.free_usdt * percent_of_assets * 0.99 / current_candle["close"])[:4])
-                print(quantity)
                 if direction == "long":
                     side = "BUY"
                 elif direction == "short":

@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Manager
 from .indicator import Indicator
 import os
 
@@ -10,11 +10,13 @@ class IndicatorsParallel:
     -----------
     This class calculates the indicators in multiple processes.
     """
-
+    manager = Manager()
+    
     def _init_indicator(self):
-        self.process = {}
+        self.processes = {}
         self.list_of_indicators = []
         self.results = {}
+        self.returns = self.manager.dict()
         
     def add(self, *indicators):
         """
@@ -22,7 +24,7 @@ class IndicatorsParallel:
         """
         self.list_of_indicators.extend(indicators)
        
-    def _wrapper(self, indicator:Indicator, queue:Queue):
+    def _wrapper(self, indicator:Indicator):
         """
         Wrapper function to run indicators in a separate process.
         
@@ -36,63 +38,67 @@ class IndicatorsParallel:
         indicator.args = list(indicator.args)
         for index, arg in enumerate(indicator.args):
             if isinstance(arg, Indicator):
-                indicator.args[index] = self.__dict__[arg.name]
-        queue.put(indicator())
+                while True:
+                    indicator_arg = self.returns.get(arg.name, False)
+                    if type(indicator_arg) != bool:
+                        break
+                indicator.args[index] = indicator_arg
+        self.returns[indicator.name] = indicator()
 
     def _live(self, name:str):
         """
         Check if indicator is running."""
-        return self.process[name].is_alive()
+        return self.processes[name].is_alive()
     
-    def _start(self):
-        """
-        Run indicators in parallel.
-        """
-        indicators_wait = self.__format__("wait")
-        queue_wait = Queue()
-        if indicators_wait:
-            for indicator in indicators_wait:
-                p = Process(target=self._wrapper, args=(indicator, queue_wait))
-                p.start()
-            self._set_indicators(queue_wait, indicators_wait)
-            self._remove_indicators(indicators_wait)
-        indicators_n_wait = self.__format__("n-wait")
-        queue_n_wait = Queue()
-        if indicators_n_wait:
-            for indicator in indicators_n_wait:
-                p = Process(target=self._wrapper, args=(indicator, queue_n_wait))
-                p.start()
-            self._set_indicators(queue_n_wait, indicators_n_wait)
-            self._remove_indicators(indicators_n_wait)
-
     # def _start(self):
     #     """
     #     Run indicators in parallel.
     #     """
-    #     queue = Queue()
-    #     for indicator in self.list_of_indicators:
-    #         p = Process(target=self._wrapper, args=(indicator, queue))
-    #         p.start()
+    #     indicators_wait = self.__format__("wait")
+    #     queue_wait = Queue()
+    #     if indicators_wait:
+    #         for indicator in indicators_wait:
+    #             p = Process(target=self._wrapper, args=(indicator, queue_wait))
+    #             p.start()
+    #         self._set_indicators(queue_wait, indicators_wait)
+    #         self._remove_indicators(indicators_wait)
+    #     indicators_n_wait = self.__format__("n-wait")
+    #     queue_n_wait = Queue()
+    #     if indicators_n_wait:
+    #         for indicator in indicators_n_wait:
+    #             p = Process(target=self._wrapper, args=(indicator, queue_n_wait))
+    #             p.start()
+    #         self._set_indicators(queue_n_wait, indicators_n_wait)
+    #         self._remove_indicators(indicators_n_wait)
 
-    #         self.process[indicator.name] = p
+    def _start(self):
+        """
+        Run indicators in parallel.
+        """
+        for indicator in self.list_of_indicators:
+            p = Process(target=self._wrapper, args=(indicator,))
+            p.start()
+            print("Started indicator: {}".format(indicator.name))
+            self.processes[indicator.name] = p
 
-    #     list_i = self.list_of_indicators
-    #     self._set_indicators(queue, list_i)
-    #     self._remove_indicators(self.list_of_indicators)
+        # list_i = self.list_of_indicators
+        self._set_indicators()
+        self._remove_indicators(self.list_of_indicators)
             
-    def _remove_indicators(self, indicators:list):
+    def _remove_indicators(self, indicators: list):
         """
         Remove indicators.
         """
         self.list_of_indicators = list(set(self.list_of_indicators) - set(indicators))
     
-    def _set_indicators(self, queue:Queue, indicators:list):
+    def _set_indicators(self):
         """
         Set indicators.
         """
-        for _ in indicators:
-            returned = queue.get()
-            self.__dict__[returned.name] = returned
+        for process in self.processes:
+            if self.processes[process].is_alive():
+                self.processes[process].join()
+            self.__dict__[process] = self.returns[process]
     
         
     def start(self):

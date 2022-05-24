@@ -125,7 +125,7 @@ class StrategyTester:
             strategy._commission_calc(qty)
             current_candle = strategy._current_candle_calc()
             trade = Trade(type=direction,
-                          entry_date=current_candle.close_time,
+                          entry_date=current_candle.close_time, # Because close time a few mili seconds before the next candle
                           entry_price=current_candle.close,
                           entry_signal=signal,
                           contract=strategy._contract_calc(qty),
