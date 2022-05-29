@@ -9,6 +9,7 @@ import os
 import time
 from .sheet import Sheet
 from datetime import datetime
+import plotly.graph_objects as go
 
 class Strategy(StrategyTester, IndicatorsParallel):
     """
@@ -218,6 +219,140 @@ class Strategy(StrategyTester, IndicatorsParallel):
     #         conditions = strategy.conditions[(strategy.data.date <= end_date)]
 
     #     new_instance = conditions
+    
+    @staticmethod
+    def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
+        """Plot the candles."""
+        # TODO: Show more candles on both sides and distinguish the beginning and the end of the trade.
+        if not isinstance(candles.index, pd.DatetimeIndex):
+            candles.index = pd.to_datetime(candles.index, unit="ms").round("1s")
+        if not entry_date:
+            entry_date = candles.index[0]
+        if not exit_date:
+            exit_date = candles.index[-1]
+        if not isinstance(entry_date, pd.Timestamp):
+            entry_date = pd.to_datetime(entry_date, unit="ms").round("1s")
+        if not isinstance(exit_date, pd.Timestamp):
+            exit_date = pd.to_datetime(exit_date, unit="ms").round("1s")
+        if not type_:
+            type_ = "candle"
+        if type_ == "candle":
+            entry_color = "blue"
+            exit_color = "blue"
+            y_entry= candles.close.iloc[0]
+            y_exit = candles.close.iloc[-1]
+        elif type_ == "long":
+            entry_color = "green"
+            exit_color = "red"
+            y_entry = candles.loc[entry_date, "high"]
+            y_exit = candles.loc[exit_date, "low"]
+        else:
+            entry_color = "red"
+            exit_color = "green"
+            y_entry = candles.loc[entry_date, "low"]
+            y_exit = candles.loc[exit_date, "high"]
+            
+        chart = go.Candlestick(x=candles.index,
+                            open=candles.open,
+                            high=candles.high,
+                            low=candles.low,
+                            close=candles.close)
+        
+        entry_arrow = go.Scatter(x=[entry_date],
+                                 y=[y_entry],
+                                 mode="markers",
+                                 marker=dict(color=entry_color, size=10))
+        exit_arrow = go.Scatter(x=[exit_date],
+                                y=[y_exit],
+                                mode="markers",
+                                marker=dict(color=exit_color, size=10))
+        data = [chart, entry_arrow, exit_arrow]
+        layout = go.Layout(title=type_,
+                           xaxis=dict(title="Date"),
+                           yaxis=dict(title="Price"))
+        fig = go.Figure(data=data, layout=layout)
+        fig.show()
+        
+    def plot_candles(strategy, start_date:str=None, end_date:str=None) -> None:
+        """Plot the candles.
+        
+        Description
+        -----------
+        This function is used to plot the candles.
+        The candles are calculated by the backtest function.
+        
+        Parameters
+        ----------
+        start_date: str
+            The start date of the backtest.
+        end_date: str
+            The end date of the backtest.
+        """
+        if not start_date and not end_date:
+            raise ValueError("start_date and end_date cannot be None at the same time.")
+
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').timestamp()*1000 if start_date else None
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').timestamp()*1000 if end_date else None
+        
+        data = strategy.data
+        data.index = pd.to_datetime(data.date, unit='ms')
+
+        if start_date:
+            data = data[(data.date >= start_date)]
+        if end_date:
+            data = data[(data.date <= end_date)]
+
+        strategy._plot(data)
+        
+    def plot_trade(strategy, num_of_trade: int=None, start_trade: str=None):
+        """Plot the trade.
+        
+        Description
+        -----------
+        This function is used to plot the trade.
+        The trade is calculated by the backtest function.
+        
+        Parameters
+        ----------
+        num_of_trade: int
+            The number of the trade that you want to plot.
+        start_trade: str
+            The start date of the trade that you want to plot.
+        """
+        if not num_of_trade and not start_trade:
+            raise ValueError("num_of_trade and start_trade cannot be None at the same time.")
+        
+        trades = strategy.closed_positions + strategy.open_positions
+
+        if num_of_trade:
+            if num_of_trade > len(trades):
+                raise ValueError("num_of_trade cannot be greater than the number of trades.")
+            trade = trades[num_of_trade]
+            
+        if start_trade:
+            _trades = []
+            for trade in trades:
+                entry_date = str(pd.to_datetime(trade.entry_date, unit="ms").round("1s"))
+                if start_trade in entry_date:
+                    _trades.append(trade)
+                    
+            if len(_trades) == 0:
+                raise ValueError("start_trade cannot be found.")
+            if len(_trades) > 1:
+                _trades = [pd.to_datetime(trade.entry_date, unit="ms").round("1s") for trade in _trades]
+                raise ValueError(f"Found {len(_trades)} trades that start with {start_trade}.\n Please choose one of the options bellow; \n {_trades}")
+            
+            trade = _trades[0]
+            
+        data = strategy.data.reset_index(drop=True)
+        start_date = trade.entry_date
+        end_date = trade.exit_date
+
+        start_trade = data[(data.date >= start_date)].iloc[0].name -50 if start_date else 0
+        end_trade = data[(data.date <= end_date)].iloc[-1].name +50 if end_date else len(data)
+        data = data.iloc[start_trade:end_trade]
+        data.index = data.date
+        strategy._plot(data, entry_date=start_date, exit_date=end_date, type_=trade.type)
         
     def result(strategy):
         """

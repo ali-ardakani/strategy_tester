@@ -14,7 +14,6 @@ from strategy_tester.models import Trade
 from strategy_tester.commands import CalculatorTrade
 from .strategy import Strategy
 import math
-from strategy_tester.telegram_bot import Manager
 
 class User(Client, Strategy):
     
@@ -23,7 +22,7 @@ class User(Client, Strategy):
     def __init__(strategy, api_key: str, api_secret: str, symbol: str, interval: str,
         requests_params: Optional[Dict[str, str]] = None, tld: str = 'com',
         testnet: bool = False, data: Optional[pd.DataFrame] = None,
-        telegram_bot: Manager = None
+        telegram_bot = None,
         ):
         super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
         strategy.threaded_websocket_manager = ThreadedWebsocketManager(api_key, api_secret)
@@ -229,8 +228,8 @@ class User(Client, Strategy):
                     side = "SELL"
                 
                 # try:
-                strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                                        newOrderRespType='RESULT')
+                # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                #                         newOrderRespType='RESULT')
                 if strategy.telegram_bot:
                     strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
                                                                 
@@ -283,8 +282,8 @@ class User(Client, Strategy):
                 data_trade = strategy.data.loc[strategy.data.date.between(
                     position.entry_date, current_candle.close_time)]
                 quantity = position.contract * qty
-                strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                                        newOrderRespType='RESULT')
+                # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                #                         newOrderRespType='RESULT')
                 if strategy.telegram_bot:
                     strategy.telegram_bot.send_message_to_channel(f"Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}")
                 position.exit_date = current_candle.close_time
