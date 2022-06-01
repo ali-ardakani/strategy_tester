@@ -25,7 +25,7 @@ class User(Client, Strategy):
         requests_params: Optional[Dict[str, str]] = None, tld: str = 'com',
         testnet: bool = False, data: Optional[pd.DataFrame] = None,
         telegram_bot = None,
-        ):
+        **kwargs):
         super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
         strategy.threaded_websocket_manager = ThreadedWebsocketManager(api_key, api_secret)
         
@@ -322,3 +322,7 @@ class User(Client, Strategy):
     def run(strategy):
         """Run the strategy."""
         strategy.start_trade = True
+        
+    def set_data(self, data):
+        """This function used in Strategy class but in User class should not do anything."""
+        pass
