@@ -224,13 +224,13 @@ class Manager:
                 
                 # Check secret code of user in the database
                 if self._get_secret_key(update.message.chat_id):
-                    update.message.reply_text(text="Secret code is correct.")
+                    update.message.reply_text(text="Please enter the secret code.")
                 else:
                     update.message.reply_text(text="You are not authorized. Please contact the administrator.")
             else:
                 update.message.reply_text(text="You don't have permission.")
         else:
-            update.message.reply_text(text="Please Enter the secret code.")
+            self._reset_attribute()
         
     def _two_factor_auth(self, update: Update, context: CallbackContext):
         """Check user's id and send secret code to user's email for two factor authentication."""
