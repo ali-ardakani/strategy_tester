@@ -372,6 +372,7 @@ class User(Client, Strategy):
     def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
         """Plot the candles."""
         # TODO: Show more candles on both sides and distinguish the beginning and the end of the trade.
+        print(entry_date)
         if not isinstance(candles.index, pd.DatetimeIndex):
             candles.index = pd.to_datetime(candles.index, unit="ms").round("1s")
         if not entry_date:
