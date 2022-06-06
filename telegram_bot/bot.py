@@ -8,8 +8,8 @@ from telegram.ext.messagehandler import MessageHandler
 import pandas as pd
 import pyotp
 from qrcode import QRCode, constants
-import sqlite3
 import io
+import os
 
 class Manager:
     _get_secret_code = False
@@ -265,11 +265,11 @@ class Manager:
         
     def _validate_database(self, path):
         """Validate the database"""
-        conn = sqlite3.connect(path)
-        cursor = conn.cursor()
-        cursor.execute("CREATE TABLE IF NOT EXISTS users (username text, secret_key text)")
-        conn.commit()
-        conn.close()
+        if os.path.isfile(path):
+            return path
+        else:
+            with open(path, "wb") as f:
+                pass
         
     @staticmethod
     def _generate_secret_key():
@@ -278,26 +278,18 @@ class Manager:
 
     def _get_secret_key(self, user_id: int):
         """Get the secret key from database."""
-        conn = sqlite3.connect(self.path_db)
-        cursor = conn.cursor()
-        cursor.execute("SELECT secret_key FROM users WHERE username = ?", (user_id,))
-        secret_key = cursor.fetchone()
-        if secret_key:
-            secret_key = secret_key[0]
-            conn.close()
-            return secret_key
+        df = pd.read_pickle(self.path_db)
+        if user_id in df.username.values:
+            return df.loc[df.username == user_id, "secret_key"].values[0]
         else:
-            conn.close()
-            return False
+            return None
     
     def _store_to_database(self, user_id, secret_key):
         """ Store the secret key to the database """
-        conn = sqlite3.connect(self.path_db)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (username, secret_key) VALUES (?, ?)", (user_id, secret_key))
-        conn.commit()
-        conn.close()
-        return secret_key
+        df = pd.read_pickle(self.path_db)
+        user = {"username": user_id, "secret_key": secret_key}
+        df = pd.concat([df, pd.DataFrame(user)])
+        df.to_pickle(self.path_db)
         
     def _create_qr_code(self, user_id, secret_key):
         """ Create a QR code for the user """
