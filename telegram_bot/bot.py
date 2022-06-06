@@ -268,8 +268,9 @@ class Manager:
         if os.path.isfile(path):
             return path
         else:
-            with open(path, "wb") as f:
-                pickle.dump(path, f)
+            df = pd.DataFrame(columns=["username", "secret_key"])
+            df.to_pickle(path)
+            return path
         
     @staticmethod
     def _generate_secret_key():
