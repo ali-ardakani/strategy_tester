@@ -150,9 +150,9 @@ class Manager:
             update.message.reply_text(text="User is not running. if you want to start the user, please type /start")
             
     def _secondary_asset(self, update: Update, context: CallbackContext):
-        """Get the primary pair asset."""
-        primary_asset = self.user.free_primary
-        update.message.reply_text(text="User {} asset: {}".format(self.user.secondary_pair, primary_asset))
+        """Get the secondary pair asset."""
+        secondary_asset = self.user.free_secondary
+        update.message.reply_text(text="User {} asset: {}".format(self.user.secondary_pair, secondary_asset))
         
     def _open_positions(self, update: Update, context: CallbackContext):
         """Get the open positions."""
