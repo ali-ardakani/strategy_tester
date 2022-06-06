@@ -171,9 +171,9 @@ class Manager:
             secret_code = update.message.text
             secret_key = self._get_secret_key(update.message.from_user.id)
             if self._verify_code(secret_key, secret_code):
-                self._get_secret_code = False
                 permission_code = True
                 self.memory_function(update, context, permission_code)
+                self._get_secret_code = False
                 update.message.reply_text(text=f"Secret code is correct and {self.memory_function.__name__} is executed.")
                 self._reset_attribute()
             else:
@@ -229,8 +229,6 @@ class Manager:
                     update.message.reply_text(text="You are not authorized. Please contact the administrator.")
             else:
                 update.message.reply_text(text="You don't have permission.")
-        else:
-            self._reset_attribute()
         
     def _two_factor_auth(self, update: Update, context: CallbackContext):
         """Check user's id and send secret code to user's email for two factor authentication."""
