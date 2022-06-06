@@ -66,11 +66,6 @@ class User(Client, Strategy):
         """
         primary = next(item for item in strategy.futures_account_balance() if item["asset"] == strategy.primary_pair)
         primary = float(primary['withdrawAvailable'])
-        # Set a price of less than $ 1,000
-        if primary > 1000:
-            primary = 1000.0
-        else:
-            primary = primary
         return primary
     
     @property
@@ -86,7 +81,13 @@ class User(Client, Strategy):
         Get free secondary pair
         """
         secondary = next(item for item in strategy.futures_account_balance() if item["asset"] == strategy.secondary_pair)
-        return float(secondary["withdrawAvailable"])
+        secondary = float(secondary["withdrawAvailable"])
+        # Set a price of less than $ 1,000
+        if secondary > 1000:
+            secondary = 1000.0
+        else:
+            secondary = secondary
+        return secondary
     
     @property
     def locked_secondary(strategy):

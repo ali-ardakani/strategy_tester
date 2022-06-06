@@ -80,8 +80,8 @@ class Manager:
         
     def _help(self, update: Update, context: CallbackContext):
         """Help the user."""
-        update.message.reply_text(text="""
-        /start - Start the user.\n/authorization - Authorization the user.\n/stop_not_close_position - Stop the user and not close the position.\n/stop_close_position - Stop the user and close the position.\n/stop_close_position_with_close_condition - Stop the user and close the position with close condition.\n/status - Get the status of the user.\n/usdt_asset - Get the USDT asset.\n/open_positions - Get the open positions of the user.\n/close_positions - Get the closed positions of the user.\n
+        update.message.reply_text(text=f"""
+        /start - Start the user.\n/authorization - Authorization the user.\n/stop_not_close_position - Stop the user and not close the position.\n/stop_close_position - Stop the user and close the position.\n/stop_close_position_with_close_condition - Stop the user and close the position with close condition.\n/status - Get the status of the user.\n/secondary_asset - Get the {self.user.secondary_pair} asset.\n/open_positions - Get the open positions of the user.\n/close_positions - Get the closed positions of the user.\n
         """)
         
     def _start(self, update: Update, context: CallbackContext, permission_code: bool=False):
