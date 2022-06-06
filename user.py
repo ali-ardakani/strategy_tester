@@ -250,7 +250,7 @@ class User(Client, Strategy):
                             strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
                                                                         
                         trade = Trade(type=direction,
-                                entry_date=current_candle.close,
+                                entry_date=current_candle.date,
                                 entry_price=current_candle.close,
                                 entry_signal=direction,
                                 contract=quantity,
