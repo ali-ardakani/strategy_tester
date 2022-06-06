@@ -28,6 +28,13 @@ class Strategy(StrategyTester, IndicatorsParallel):
         parts = [strategy.data]
         parts.extend(*conditions)
         strategy._conditions = pd.concat(parts, axis=1)
+        
+    @property
+    def hlcc4(strategy):
+        _hlcc4 = strategy.__dict__.get("_hlcc4", None)
+        if _hlcc4 is None:
+            strategy._hlcc4 = (strategy.high + strategy.low + strategy.close + strategy.close)/4
+        return strategy._hlcc4
 
     def __init__(strategy) -> None:
         """ StrategyTester constructor.
@@ -60,6 +67,16 @@ class Strategy(StrategyTester, IndicatorsParallel):
         """
         parameters = []
         for key, value in kwargs.items():
+            if value == "open":
+                value = strategy.open
+            elif value == "high":
+                value = strategy.high
+            elif value == "low":
+                value = strategy.low
+            elif value == "close":
+                value = strategy.close
+            elif value == "hlcc4":
+                value = strategy.hlcc4
             parameters.append((key, value))
             strategy.__setattr__(key, value)
         strategy.parameters = tuple(parameters)

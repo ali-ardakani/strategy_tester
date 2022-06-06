@@ -43,6 +43,8 @@ class IndicatorsParallel:
         indicator.args = list(indicator.args)
         for index, arg in enumerate(indicator.args):
             if isinstance(arg, Indicator):
+                if arg not in self.list_of_indicators:
+                    raise ValueError("Indicator {} not added.".format(arg.name))
                 while True:
                     indicator_arg = self.returns.get(arg.name, False)
                     if type(indicator_arg) != bool:

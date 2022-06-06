@@ -1,11 +1,7 @@
 from binance import Client
 from typing import Dict, Optional
 import pandas as pd
-import datetime as dt
 import numpy as np
-import time
-import websockets
-import json
 import pandas as pd
 from binance import ThreadedWebsocketManager
 from binance.exceptions import BinanceAPIException
@@ -21,12 +17,20 @@ class User(Client, Strategy):
     _exit = True
     _entry = True
     
-    def __init__(strategy, api_key: str, api_secret: str, symbol: str, interval: str,
-        requests_params: Optional[Dict[str, str]] = None, tld: str = 'com',
-        testnet: bool = False, data: Optional[pd.DataFrame] = None,
-        telegram_bot = None,
-        **kwargs):
+    def __init__(strategy, 
+                api_key: str, 
+                api_secret: str, 
+                primary_pair: str,
+                secondary_pair: str,
+                interval: str,
+                requests_params: Optional[Dict[str, str]] = None, 
+                tld: str = 'com',
+                testnet: bool = False, 
+                data: Optional[pd.DataFrame] = None,
+                telegram_bot = None,
+                **kwargs):
         super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
+        strategy.primary_pair, strategy.secondary_pair = strategy._validate_pair(primary_pair, secondary_pair)
         strategy.threaded_websocket_manager = ThreadedWebsocketManager(api_key, api_secret)
         
         strategy.telegram_bot = telegram_bot
@@ -43,7 +47,6 @@ class User(Client, Strategy):
         strategy.tmp_data = pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume", "close_time"])
         
         strategy.interval = interval
-        strategy.symbol = symbol
         strategy.data = strategy._validate_data(data)
 
         strategy.current_candle = None
@@ -55,41 +58,41 @@ class User(Client, Strategy):
         strategy.counter__ = 0
         
     @property
-    def free_usdt(strategy):
+    def free_primary(strategy):
         """
-        Get free USDT
+        Get free primary pair
         """
-        usdt = next(item for item in strategy.futures_account_balance() if item["asset"] == "USDT")
-        return float(usdt['withdrawAvailable'])
+        primary = next(item for item in strategy.futures_account_balance() if item["asset"] == strategy.primary_pair)
+        return float(primary['withdrawAvailable'])
     
     @property
-    def locked_usdt(strategy):
+    def locked_primary(strategy):
         """
-        Get locked USDT
+        Get locked primary pair
         """
-        return strategy.get_asset_balance(asset="USDT")["locked"]
+        return strategy.get_asset_balance(asset=strategy.primary_pair)["locked"]
     
     @property
-    def free_btc(strategy):
+    def free_secondary(strategy):
         """
-        Get free BTC
+        Get free secondary pair
         """
-        btc = next(item for item in strategy.futures_account_balance() if item["asset"] == "BTC")
-        return float(btc["withdrawAvailable"])
+        secondary = next(item for item in strategy.futures_account_balance() if item["asset"] == strategy.secondary_pair)
+        return float(secondary["withdrawAvailable"])
     
     @property
-    def locked_btc(strategy):
+    def locked_secondary(strategy):
         """
-        Get locked BTC
+        Get locked secondary pair
         """
-        return strategy.get_asset_balance(asset="BTC")["locked"]
+        return strategy.get_asset_balance(asset=strategy.secondary_pair)["locked"]
     
     @property
     def open_positions(strategy):
         if strategy._in_bot:
             return strategy._open_positions
         else:
-            open_positions = strategy.futures_position_information(symbol="BTCUSDT")
+            open_positions = strategy.futures_position_information(symbol=strategy.symbol)
             strategy._in_bot = True
             if open_positions[0]:
                 if float(open_positions[0]["positionAmt"]) == 0:
@@ -223,29 +226,32 @@ class User(Client, Strategy):
         if strategy._entry:
             current_candle = strategy.data.loc[strategy.current_candle]
             if strategy.start_trade and strategy.data.date.iloc[-1] == current_candle["date"]:
+                # If there is no open position, then open position (Only used for having 1 open position at the same time)
                 if strategy.open_positions == []:
-                    quantity = float(str(strategy.free_usdt * percent_of_assets * 0.99 / current_candle["close"])[:4])
+                    quantity = float(str(strategy.free_primary * percent_of_assets * 0.997 / current_candle["close"])[:4])
                     if direction == "long":
                         side = "BUY"
                     elif direction == "short":
                         side = "SELL"
                     
-                    # try:
-                    # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                    #                         newOrderRespType='RESULT')
-                    if strategy.telegram_bot:
-                        strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
-                                                                    
-                    trade = Trade(type=direction,
-                            entry_date=current_candle.close,
-                            entry_price=current_candle.close,
-                            entry_signal=direction,
-                            contract=quantity,
-                            comment=comment)
-                    print(f"Open Position with {trade.type} {trade.contract} contracts at {trade.entry_price}")
-                    strategy._open_positions.append(trade)
-                    # except BinanceAPIException as e:
-                    #     pass
+                    try:
+                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                                            newOrderRespType='RESULT')
+                        if strategy.telegram_bot:
+                            strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
+                                                                        
+                        trade = Trade(type=direction,
+                                entry_date=current_candle.close,
+                                entry_price=current_candle.close,
+                                entry_signal=direction,
+                                contract=quantity,
+                                comment=comment)
+                        print(f"Open Position with {trade.type} {trade.contract} contracts at {trade.entry_price}")
+                        strategy._open_positions.append(trade)
+                    except BinanceAPIException as e:
+                        if strategy.telegram_bot:
+                            strategy.telegram_bot.send_message_to_channel(f"Error in Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}\nError: {e}")
+                        print(f"Error in Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}\nError: {e}")
             
     def exit(strategy,
              from_entry: str,
@@ -281,24 +287,26 @@ class User(Client, Strategy):
                         side = "SELL"
                     elif position.type == "short":
                         side = "BUY"
-                    # try:
-                    # Calculate parameters such as profit, draw down, etc.
-                    data_trade = strategy.data.loc[strategy.data.date.between(
-                        position.entry_date, current_candle.close_time)]
-                    quantity = position.contract * qty
-                    # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                    #                         newOrderRespType='RESULT')
-                    if strategy.telegram_bot:
-                        strategy.telegram_bot.send_message_to_channel(f"Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}")
-                    position.exit_date = current_candle.close_time
-                    position.exit_price = current_candle.close
-                    print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
-                    position.exit_signal = signal
-                    CalculatorTrade(position, data_trade)
-                    strategy._open_positions.remove(position)
-                    strategy._closed_positions.append(position)
-                    # except BinanceAPIException as e:
-                    #     pass
+                    try:
+                        # Calculate parameters such as profit, draw down, etc.
+                        data_trade = strategy.data.loc[strategy.data.date.between(
+                            position.entry_date, current_candle.close_time)]
+                        quantity = position.contract * qty
+                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                                                newOrderRespType='RESULT')
+                        if strategy.telegram_bot:
+                            strategy.telegram_bot.send_message_to_channel(f"Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}")
+                        position.exit_date = current_candle.close_time
+                        position.exit_price = current_candle.close
+                        print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
+                        position.exit_signal = signal
+                        CalculatorTrade(position, data_trade)
+                        strategy._open_positions.remove(position)
+                        strategy._closed_positions.append(position)
+                    except BinanceAPIException as e:
+                        if strategy.telegram_bot:
+                            strategy.telegram_bot.send_message_to_channel(f"Error in Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}\nError: {e}")
+                        print(f"Error in Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}\nError: {e}")
                 
     def close_positions(strategy):
         """
@@ -326,3 +334,25 @@ class User(Client, Strategy):
     def set_data(self, data):
         """This function used in Strategy class but in User class should not do anything."""
         pass
+    
+    def _validate_pair(strategy, primary, secondary):
+        """
+        Validate the pair of the strategy.
+        
+        Parameters
+        ----------
+        primary : str
+            The primary pair of the strategy.
+        secondary : str
+            The secondary pair of the strategy.
+        """
+        primary = primary.upper()
+        secondary = secondary.upper()
+        symbol = primary + secondary
+        list_of_symbols = strategy.get_exchange_info()["symbols"]
+        try:
+            next(item for item in list_of_symbols if item["symbol"] == symbol)
+            strategy.symbol = symbol
+            return primary, secondary
+        except StopIteration:
+            raise ValueError(f"The pair {symbol} is not supported.({primary=}, {secondary=})")
