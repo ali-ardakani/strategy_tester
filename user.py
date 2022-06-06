@@ -244,8 +244,8 @@ class User(Client, Strategy):
                         side = "SELL"
                     
                     try:
-                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                                            newOrderRespType='RESULT')
+                        # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                        #                     newOrderRespType='RESULT')
                         if strategy.telegram_bot:
                             strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
                                                                         
@@ -301,8 +301,8 @@ class User(Client, Strategy):
                         data_trade = strategy.data.loc[strategy.data.date.between(
                             position.entry_date, current_candle.close_time)]
                         quantity = position.contract * qty
-                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                                                newOrderRespType='RESULT')
+                        # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                        #                         newOrderRespType='RESULT')
                         position.exit_date = current_candle.close_time
                         position.exit_price = current_candle.close
                         position.exit_signal = signal
