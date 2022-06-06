@@ -73,7 +73,7 @@ class Manager:
         self.updater.dispatcher.add_handler(CommandHandler("stop_close_position", self._stop_close_position))
         self.updater.dispatcher.add_handler(CommandHandler("stop_close_position_condition", self._stop_close_position_with_close_condition))
         self.updater.dispatcher.add_handler(CommandHandler("status", self._status))
-        self.updater.dispatcher.add_handler(CommandHandler("usdt_asset", self._usdt_asset))
+        self.updater.dispatcher.add_handler(CommandHandler("usdt_asset", self._primary_asset))
         self.updater.dispatcher.add_handler(CommandHandler("open_positions", self._open_positions))
         self.updater.dispatcher.add_handler(CommandHandler("close_positions", self._closed_positions))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.text, self._reply))
@@ -149,10 +149,10 @@ class Manager:
         except:
             update.message.reply_text(text="User is not running. if you want to start the user, please type /start")
             
-    def _usdt_asset(self, update: Update, context: CallbackContext):
+    def _primary_asset(self, update: Update, context: CallbackContext):
         """Get the primary pair asset."""
         primary_asset = self.user.free_primary
-        update.message.reply_text(text="User USDT asset: {}".format(primary_asset))
+        update.message.reply_text(text="User {} asset: {}".format(self.user.primary_pair, primary_asset))
         
     def _open_positions(self, update: Update, context: CallbackContext):
         """Get the open positions."""
