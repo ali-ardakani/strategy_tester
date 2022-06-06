@@ -89,8 +89,6 @@ class Manager:
             self.user.run()
             self.send_message_to_channel("Strategy is started!")
             update.message.reply_text(text="User is running.")
-        
-        self._check_permission(update, context)
     
     def _stop_not_close_position(self, update: Update, context: CallbackContext,permission_code: bool=False):
         """Stop the open positions and not close the position."""
@@ -104,8 +102,6 @@ class Manager:
             else:
                 self.send_message_to_channel("Strategy is stopped! No open positions.")
             update.message.reply_text(text="Command stop_not_close_position is executed.")
-            
-        self._check_permission(update, context)
     
     def _stop_close_position(self, update: Update, context: CallbackContext, permission_code: bool=False):
         """Stop the user and close the position."""
@@ -120,8 +116,6 @@ class Manager:
             else:
                 self.send_message_to_channel("Strategy is stopped! No open positions.")
             update.message.reply_text(text="Command stop_close_position is executed.")
-            
-        self._check_permission(update, context)
         
     def _stop_close_position_with_close_condition(self, update: Update, context: CallbackContext, permission_code: bool=False):
         """Stop the user and close the position."""
@@ -137,14 +131,12 @@ class Manager:
                 self.send_message_to_channel("Strategy is stopped! No open positions.")
                 
             update.message.reply_text(text="Command stop_close_position_with_close_condition is executed.")
-            
-        self._check_permission(update, context)
         
     def _status(self, update: Update, context: CallbackContext):
         """Check user status."""
         try:
             open_positions = self.user.open_positions
-            usdt_asset = self.user.free_usdt
+            usdt_asset = self.user.free_primary
             if open_positions:
                 update.message.reply_text(text="User is running.\nUSDT: {}\nOpen Positions: {}".format(usdt_asset, open_positions))
             else:
@@ -153,9 +145,9 @@ class Manager:
             update.message.reply_text(text="User is not running. if you want to start the user, please type /start")
             
     def _usdt_asset(self, update: Update, context: CallbackContext):
-        """Get the USDT asset."""
-        usdt_asset = self.user.free_usdt
-        update.message.reply_text(text="User USDT asset: {}".format(usdt_asset))
+        """Get the primary pair asset."""
+        primary_asset = self.user.free_primary
+        update.message.reply_text(text="User USDT asset: {}".format(primary_asset))
         
     def _open_positions(self, update: Update, context: CallbackContext):
         """Get the open positions."""
@@ -232,14 +224,13 @@ class Manager:
                 
                 # Check secret code of user in the database
                 if self._get_secret_key(update.message.chat_id):
-                    update.message.reply_text(text="Please enter the secret code.")
-                    
+                    update.message.reply_text(text="Secret code is correct.")
                 else:
                     update.message.reply_text(text="You are not authorized. Please contact the administrator.")
             else:
                 update.message.reply_text(text="You don't have permission.")
         else:
-            update.message.reply_text(text="Please Enter the password.")
+            update.message.reply_text(text="Please Enter the secret code.")
         
     def _two_factor_auth(self, update: Update, context: CallbackContext):
         """Check user's id and send secret code to user's email for two factor authentication."""
@@ -310,8 +301,3 @@ class Manager:
     def _verify_code(self, secret_key, code):
         """ Verify the code """
         return pyotp.totp.TOTP(secret_key).verify(code)
-    
-    def _check_permission(self, update, context):
-        """Check the permission of the user."""
-        if self._get_secret_code:
-            update.message.reply_text(text="Please enter the password.")
