@@ -372,6 +372,7 @@ class User(Client, Strategy):
     def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
         """Plot the candles."""
         # TODO: Show more candles on both sides and distinguish the beginning and the end of the trade.
+        # Covert exit date to open date next candle
         if not type_:
             type_ = "candle"
         if type_ == "candle":
@@ -383,12 +384,12 @@ class User(Client, Strategy):
             entry_color = "green"
             exit_color = "red"
             y_entry = candles.loc[entry_date, "high"]
-            y_exit = candles.loc[exit_date, "low"]
+            y_exit = candles[candles.date >= exit_date].iloc[-1].low
         else:
             entry_color = "red"
             exit_color = "green"
             y_entry = candles.loc[entry_date, "low"]
-            y_exit = candles.loc[exit_date, "high"]
+            y_exit = candles[candles.date >= exit_date].iloc[-1].high
             
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
