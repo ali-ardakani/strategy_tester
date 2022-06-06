@@ -1,4 +1,3 @@
-from .telegram_bot import Manager
 from binance import Client
 from typing import Dict, Optional
 import pandas as pd
@@ -30,7 +29,7 @@ class User(Client, Strategy):
                 tld: str = 'com',
                 testnet: bool = False, 
                 data: Optional[pd.DataFrame] = None,
-                telegram_bot: Manager = None,
+                telegram_bot = None,
                 **kwargs):
         super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
         strategy.primary_pair, strategy.secondary_pair = strategy._validate_pair(primary_pair, secondary_pair)
