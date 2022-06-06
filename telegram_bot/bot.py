@@ -289,7 +289,7 @@ class Manager:
         """ Store the secret key to the database """
         df = pd.read_pickle(self.path_db)
         user = {"username": user_id, "secret_key": secret_key}
-        df = pd.concat([df, pd.DataFrame(user)], axis=1, ignore_index=True)
+        df = pd.concat([df, pd.DataFrame([user])], axis=1, ignore_index=True)
         df.to_pickle(self.path_db)
         
     def _create_qr_code(self, user_id, secret_key):
