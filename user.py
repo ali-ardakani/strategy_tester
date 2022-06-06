@@ -1,3 +1,4 @@
+from .telegram_bot import Manager
 from binance import Client
 from typing import Dict, Optional
 import pandas as pd
@@ -10,6 +11,8 @@ from strategy_tester.models import Trade
 from strategy_tester.commands import CalculatorTrade
 from .strategy import Strategy
 import math
+import plotly.graph_objects as go
+import io
 
 class User(Client, Strategy):
     
@@ -27,7 +30,7 @@ class User(Client, Strategy):
                 tld: str = 'com',
                 testnet: bool = False, 
                 data: Optional[pd.DataFrame] = None,
-                telegram_bot = None,
+                telegram_bot: Manager = None,
                 **kwargs):
         super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
         strategy.primary_pair, strategy.secondary_pair = strategy._validate_pair(primary_pair, secondary_pair)
@@ -63,7 +66,13 @@ class User(Client, Strategy):
         Get free primary pair
         """
         primary = next(item for item in strategy.futures_account_balance() if item["asset"] == strategy.primary_pair)
-        return float(primary['withdrawAvailable'])
+        primary = float(primary['withdrawAvailable'])
+        # Set a price of less than $ 1,000
+        if primary > 1000:
+            primary = 1000.0
+        else:
+            primary = primary
+        return primary
     
     @property
     def locked_primary(strategy):
@@ -294,12 +303,14 @@ class User(Client, Strategy):
                         quantity = position.contract * qty
                         strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
                                                 newOrderRespType='RESULT')
-                        if strategy.telegram_bot:
-                            strategy.telegram_bot.send_message_to_channel(f"Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}")
                         position.exit_date = current_candle.close_time
                         position.exit_price = current_candle.close
-                        print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
                         position.exit_signal = signal
+                        if strategy.telegram_bot:
+                            strategy.telegram_bot.send_message_to_channel(f"Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}")
+                            strategy.telegram_bot.send_image_to_channel(strategy._plot_to_channel(position))
+
+                        print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
                         CalculatorTrade(position, data_trade)
                         strategy._open_positions.remove(position)
                         strategy._closed_positions.append(position)
@@ -356,3 +367,72 @@ class User(Client, Strategy):
             return primary, secondary
         except StopIteration:
             raise ValueError(f"The pair {symbol} is not supported.({primary=}, {secondary=})")
+        
+    @staticmethod
+    def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
+        """Plot the candles."""
+        # TODO: Show more candles on both sides and distinguish the beginning and the end of the trade.
+        if not isinstance(candles.index, pd.DatetimeIndex):
+            candles.index = pd.to_datetime(candles.index, unit="ms").round("1s")
+        if not entry_date:
+            entry_date = candles.index[0]
+        if not exit_date:
+            exit_date = candles.index[-1]
+        if not isinstance(entry_date, pd.Timestamp):
+            entry_date = pd.to_datetime(entry_date, unit="ms").round("1s")
+        if not isinstance(exit_date, pd.Timestamp):
+            exit_date = pd.to_datetime(exit_date, unit="ms").round("1s")
+        if not type_:
+            type_ = "candle"
+        if type_ == "candle":
+            entry_color = "blue"
+            exit_color = "blue"
+            y_entry= candles.close.iloc[0]
+            y_exit = candles.close.iloc[-1]
+        elif type_ == "long":
+            entry_color = "green"
+            exit_color = "red"
+            y_entry = candles.loc[entry_date, "high"]
+            y_exit = candles.loc[exit_date, "low"]
+        else:
+            entry_color = "red"
+            exit_color = "green"
+            y_entry = candles.loc[entry_date, "low"]
+            y_exit = candles.loc[exit_date, "high"]
+            
+        chart = go.Candlestick(x=candles.index,
+                            open=candles.open,
+                            high=candles.high,
+                            low=candles.low,
+                            close=candles.close)
+        
+        entry_arrow = go.Scatter(x=[entry_date],
+                                 y=[y_entry],
+                                 mode="markers",
+                                 marker=dict(color=entry_color, size=10))
+        exit_arrow = go.Scatter(x=[exit_date],
+                                y=[y_exit],
+                                mode="markers",
+                                marker=dict(color=exit_color, size=10))
+        data = [chart, entry_arrow, exit_arrow]
+        layout = go.Layout(title=type_,
+                           xaxis=dict(title="Date"),
+                           yaxis=dict(title="Price"))
+        fig = go.Figure(data=data, layout=layout)
+        
+        # Create a binary image to send to channel
+        img_byte = io.BytesIO()
+        fig.write_image(img_byte, format="png")
+        img_byte.seek(0)
+        return img_byte
+        
+    def _plot_to_channel(strategy, trade: Trade):
+        data = strategy.data.reset_index(drop=True)
+        start_date = trade.entry_date
+        end_date = trade.exit_date
+
+        start_trade = data[(data.date >= start_date)].iloc[0].name -50 if start_date else 0
+        end_trade = data[(data.date <= end_date)].iloc[-1].name +50 if end_date else len(data)
+        data = data.iloc[start_trade:end_trade]
+        data.index = data.date
+        return strategy._plot(data, entry_date=start_date, exit_date=end_date, type_=trade.type)

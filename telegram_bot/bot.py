@@ -3,7 +3,7 @@ from telegram.update import Update
 from telegram.ext.callbackcontext import CallbackContext
 from telegram import Bot
 from telegram.ext.commandhandler import CommandHandler, Filters
-from strategy_tester import User
+from strategy_tester import User, telegram_bot
 from telegram.ext.messagehandler import MessageHandler
 import pandas as pd
 import pyotp
@@ -34,7 +34,7 @@ class Manager:
         self.bot = Bot(token=self.token)
         
         # Set the user
-        self.user = user(**kwargs)
+        self.user = user(telegram_bot=self, **kwargs)
         
         # Memory function
         self.memory_function = None
@@ -51,6 +51,11 @@ class Manager:
         if self.channel_id == None:
             raise ValueError("Channel ID is not set")
         self.bot.send_message(chat_id=self.channel_id, text=text)
+        
+    def send_image_to_channel(self, img_bytes: bytes):
+        if self.channel_id == None:
+            raise ValueError("Channel ID is not set")
+        self.bot.send_photo(chat_id=self.channel_id, photo=img_bytes)
 
     def _send_message_to_bot(self, update: Update, context: CallbackContext, text: str):
         """Send every message to the bot."""
