@@ -244,8 +244,8 @@ class User(Client, Strategy):
                         side = "SELL"
                     
                     try:
-                        # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                        #                     newOrderRespType='RESULT')
+                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                                            newOrderRespType='RESULT')
                         if strategy.telegram_bot:
                             strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
                                                                         
@@ -301,14 +301,14 @@ class User(Client, Strategy):
                         data_trade = strategy.data.loc[strategy.data.date.between(
                             position.entry_date, current_candle.close_time)]
                         quantity = position.contract * qty
-                        # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                        #                         newOrderRespType='RESULT')
+                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                                                newOrderRespType='RESULT')
                         position.exit_date = current_candle.close_time
                         position.exit_price = current_candle.close
                         position.exit_signal = signal
                         if strategy.telegram_bot:
                             strategy.telegram_bot.send_message_to_channel(f"Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}")
-                            strategy.telegram_bot.send_image_to_channel(strategy._plot_to_channel(position))
+                            # strategy.telegram_bot.send_image_to_channel(strategy._plot_to_channel(position))
 
                         print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
                         CalculatorTrade(position, data_trade)
