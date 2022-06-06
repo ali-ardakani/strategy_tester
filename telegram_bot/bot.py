@@ -10,6 +10,7 @@ import pyotp
 from qrcode import QRCode, constants
 import io
 import os
+import pickle
 
 class Manager:
     _get_secret_code = False
@@ -27,8 +28,7 @@ class Manager:
         self.channel_id = channel_id
         self.licensed = self._validate_licensed(licensed)
         # Initialize the database
-        self._validate_database(path_db)
-        self.path_db = path_db
+        self.path_db = self._validate_database(path_db)
         self.updater = Updater(token=self.token, use_context=self.use_context)
         self.dispatcher = self.updater.dispatcher
         self.bot = Bot(token=self.token)
@@ -269,7 +269,7 @@ class Manager:
             return path
         else:
             with open(path, "wb") as f:
-                pass
+                pickle.dump(path, f)
         
     @staticmethod
     def _generate_secret_key():
