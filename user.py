@@ -334,7 +334,9 @@ class User(Client, Strategy):
         """
         Close all open positions.
         """
+        print(strategy.open_positions)
         for position in strategy.open_positions:
+            print(position.entry_signal)
             strategy.exit(from_entry=position.entry_signal)
             
     def _current_candle_calc(strategy):

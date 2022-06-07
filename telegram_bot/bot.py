@@ -114,6 +114,7 @@ class Manager:
             
         if permission_code:
             self._stop(update, context)
+            self.user._exit = True
             open_positions = self.user.open_positions
             self.user.close_positions()
             if open_positions != []:
