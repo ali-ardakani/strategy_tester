@@ -299,9 +299,7 @@ class User(Client, Strategy):
         if strategy._exit:
             current_candle = strategy.data.loc[strategy.current_candle]
             if strategy.start_trade and strategy.data.date.iloc[-1] == current_candle["date"]:
-                print(f"Enter to in if")
                 open_position = [position for position in strategy.open_positions if position.entry_signal == from_entry]
-                print(open_position)
                 for position in open_position:
                     if position.type == "long":
                         side = "SELL"
@@ -336,7 +334,7 @@ class User(Client, Strategy):
         """
         Close all open positions.
         """
-        strategy.current_candle = strategy.data.iloc[0].name
+        strategy.current_candle = strategy.data.iloc[-1].name
         for position in strategy.open_positions:
             print(position.entry_signal)
             strategy.exit(from_entry=position.entry_signal)
