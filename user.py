@@ -484,5 +484,10 @@ class User(Client, Strategy):
             return margin_type
         except BinanceAPIException as e:
             if strategy.telegram_bot:
-                strategy.telegram_bot.send_message_to_channel(f"Error in Set Margin Type\n\nMargin Type: {margin_type}\nError: {e}")
-            raise e
+                if e.message == "No need to change margin type.":
+                    strategy.telegram_bot.send_message_to_channel(f"Margin type is already {margin_type}")
+                    return margin_type
+                else:
+                    strategy.telegram_bot.send_message_to_channel(f"Error in Set Margin Type\n\nMargin Type: {margin_type}\nError: {e}")
+                raise e
+            
