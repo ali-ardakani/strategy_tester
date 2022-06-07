@@ -250,7 +250,7 @@ class User(Client, Strategy):
                         side = "SELL"
                     
                     try:
-                        strategy.futures_create_order(symbol="BTCBUSD", side="", type='MARKET', quantity=quantity, newOrderRespType='RESULT')
+                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
                         
                         entry_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms")                                         
                         trade = Trade(type=direction,
