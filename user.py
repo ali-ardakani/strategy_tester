@@ -39,8 +39,11 @@ class User(Client, Strategy):
         
         strategy.telegram_bot = telegram_bot
         
-        # strategy.leverage = strategy._set_leverage(leverage)
-        # strategy.margin_type = strategy._set_margin_type(margin_type)
+        if strategy.open_positions != []:
+            strategy.telegram_bot.send_message_to_channel(f"{strategy.primary_pair}{strategy.secondary_pair} has open positions.")
+            
+        strategy.leverage = strategy._set_leverage(leverage)
+        strategy.margin_type = strategy._set_margin_type(margin_type)
         # Start the thread's activity.
         strategy.threaded_websocket_manager.start()
         
@@ -87,8 +90,8 @@ class User(Client, Strategy):
         secondary = next(item for item in strategy.futures_account_balance() if item["asset"] == strategy.secondary_pair)
         secondary = float(secondary["withdrawAvailable"])
         # Set a price of less than $ 1,000
-        if secondary > 1000:
-            secondary = 1000.0
+        if secondary > 50:
+            secondary = 50
         else:
             secondary = secondary
         return secondary
@@ -248,7 +251,7 @@ class User(Client, Strategy):
                         side = "SELL"
                     
                     try:
-                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
+                        strategy.futures_create_order(symbol="BTCBUSD", side="", type='MARKET', quantity=quantity, newOrderRespType='RESULT')
                         
                         entry_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms")                                         
                         trade = Trade(type=direction,
