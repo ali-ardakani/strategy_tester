@@ -114,9 +114,11 @@ class Manager:
             
         if permission_code:
             self._stop(update, context)
+            self.user.start_trade = True
             self.user._exit = True
             open_positions = self.user.open_positions
             self.user.close_positions()
+            self.start_trade = False
             if open_positions != []:
                 self.send_message_to_channel("Strategy is stopped! Close positions: {}".format(open_positions))
             else:
