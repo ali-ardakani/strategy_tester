@@ -37,6 +37,12 @@ class User(Client, Strategy):
         strategy.primary_pair, strategy.secondary_pair = strategy._validate_pair(primary_pair, secondary_pair)
         strategy.threaded_websocket_manager = ThreadedWebsocketManager(api_key, api_secret)
         
+        strategy.current_candle = None
+        strategy._open_positions = []
+        strategy._closed_positions = []
+        strategy._in_bot = False # 
+        strategy.start_trade = False
+        
         strategy.telegram_bot = telegram_bot
         
         if strategy.open_positions != []:
@@ -57,12 +63,6 @@ class User(Client, Strategy):
         
         strategy.interval = interval
         strategy.data = strategy._validate_data(data)
-
-        strategy.current_candle = None
-        strategy._open_positions = []
-        strategy._closed_positions = []
-        strategy._in_bot = False # 
-        strategy.start_trade = False
 
         strategy.counter__ = 0
         

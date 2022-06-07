@@ -116,7 +116,7 @@ class Manager:
             self._stop(update, context)
             open_positions = self.user.open_positions
             self.user.close_positions()
-            if open_positions:
+            if open_positions != []:
                 self.send_message_to_channel("Strategy is stopped! Close positions: {}".format(open_positions))
             else:
                 self.send_message_to_channel("Strategy is stopped! No open positions.")
