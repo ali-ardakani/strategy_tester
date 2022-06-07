@@ -39,8 +39,8 @@ class User(Client, Strategy):
         
         strategy.telegram_bot = telegram_bot
         
-        strategy.leverage = strategy._set_leverage(leverage)
-        strategy.margin_type = strategy._set_margin_type(margin_type)
+        # strategy.leverage = strategy._set_leverage(leverage)
+        # strategy.margin_type = strategy._set_margin_type(margin_type)
         # Start the thread's activity.
         strategy.threaded_websocket_manager.start()
         
