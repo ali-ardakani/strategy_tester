@@ -296,12 +296,12 @@ class User(Client, Strategy):
         comment : str
             The comment of the position.
         """
-        print("entry_exit")
         if strategy._exit:
-            print("entry_exit")
             current_candle = strategy.data.loc[strategy.current_candle]
             if strategy.start_trade and strategy.data.date.iloc[-1] == current_candle["date"]:
+                print(f"Enter to in if")
                 open_position = [position for position in strategy.open_positions if position.entry_signal == from_entry]
+                print(open_position)
                 for position in open_position:
                     if position.type == "long":
                         side = "SELL"
