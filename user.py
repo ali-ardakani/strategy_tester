@@ -253,7 +253,7 @@ class User(Client, Strategy):
                     try:
                         strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
                         
-                        entry_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms")                                         
+                        entry_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms").round("1s")                                       
                         trade = Trade(type=direction,
                                 entry_date=entry_date_datetime.timestamp()*1000,
                                 entry_price=current_candle.close,
@@ -312,7 +312,7 @@ class User(Client, Strategy):
                         quantity = position.contract * qty
                         strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
                                                 newOrderRespType='RESULT')
-                        exit_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms")
+                        exit_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms").round("1s")
                         position.exit_date = exit_date_datetime.timestamp()*1000
                         position.exit_price = current_candle.close
                         position.exit_signal = signal
