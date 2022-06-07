@@ -244,7 +244,7 @@ class User(Client, Strategy):
                 # If there is no open position, then open position (Only used for having 1 open position at the same time)
                 if strategy.open_positions == []:
                     quantity = float(str(strategy.free_secondary * percent_of_assets * 0.997 / current_candle["close"])[:4])
-                    print(quantity)
+                    print(strategy.free_secondary * percent_of_assets * 0.997 / current_candle["close"])
                     if direction == "long":
                         side = "BUY"
                     elif direction == "short":
