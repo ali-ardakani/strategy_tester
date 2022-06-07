@@ -141,11 +141,11 @@ class Manager:
         """Check user status."""
         try:
             open_positions = self.user.open_positions
-            usdt_asset = self.user.free_primary
+            usdt_asset = self.user.free_secondary
             if open_positions:
-                update.message.reply_text(text="User is running.\nUSDT: {}\nOpen Positions: {}".format(usdt_asset, open_positions))
+                update.message.reply_text(text=f"User is running.\nOpen positions: {open_positions}\nUSDT asset: {usdt_asset}\nPermission to entry: {self.user._entry}\nPermission to exit: {self.user._exit}\nLeverage: {self.user.leverage}\nMargin Type: {self.user.margin_type}")
             else:
-                update.message.reply_text(text="User is running.\nUSDT: {}\nNo open positions.".format(usdt_asset))
+                update.message.reply_text(text=f"User is running.\nOpen positions: {open_positions}\nUSDT asset: {usdt_asset}\nPermission to entry: {self.user._entry}\nPermission to exit: {self.user._exit}\nLeverage: {self.user.leverage}\nMargin Type: {self.user.margin_type}")
         except:
             update.message.reply_text(text="User is not running. if you want to start the user, please type /start")
             

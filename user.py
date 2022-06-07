@@ -16,8 +16,8 @@ import io
 class User(Client, Strategy):
     
     _user = True
-    _exit = True
-    _entry = True
+    _exit = False
+    _entry = False
     
     def __init__(strategy, 
                 api_key: str, 
@@ -25,6 +25,8 @@ class User(Client, Strategy):
                 primary_pair: str,
                 secondary_pair: str,
                 interval: str,
+                leverage: int,
+                margin_type: str,
                 requests_params: Optional[Dict[str, str]] = None, 
                 tld: str = 'com',
                 testnet: bool = False, 
@@ -37,6 +39,8 @@ class User(Client, Strategy):
         
         strategy.telegram_bot = telegram_bot
         
+        strategy.leverage = strategy._set_leverage(leverage)
+        strategy.margin_type = strategy._set_margin_type(margin_type)
         # Start the thread's activity.
         strategy.threaded_websocket_manager.start()
         
@@ -244,13 +248,12 @@ class User(Client, Strategy):
                         side = "SELL"
                     
                     try:
-                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                                            newOrderRespType='RESULT')
+                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
                         if strategy.telegram_bot:
                             strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
                                                                         
                         trade = Trade(type=direction,
-                                entry_date=current_candle.date,
+                                entry_date=pd.to_datetime(current_candle.close_time, unit="ms").timestamp()*1000,
                                 entry_price=current_candle.close,
                                 entry_signal=direction,
                                 contract=quantity,
@@ -303,7 +306,7 @@ class User(Client, Strategy):
                         quantity = position.contract * qty
                         strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
                                                 newOrderRespType='RESULT')
-                        position.exit_date = current_candle.close_time
+                        position.exit_date = pd.to_datetime(current_candle.close_time, unit="ms").timestamp()*1000
                         position.exit_price = current_candle.close
                         position.exit_signal = signal
                         if strategy.telegram_bot:
@@ -371,8 +374,6 @@ class User(Client, Strategy):
     @staticmethod
     def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
         """Plot the candles."""
-        # TODO: Show more candles on both sides and distinguish the beginning and the end of the trade.
-        # Covert exit date to open date next candle
         if not type_:
             type_ = "candle"
         if type_ == "candle":
@@ -384,12 +385,12 @@ class User(Client, Strategy):
             entry_color = "green"
             exit_color = "red"
             y_entry = candles.loc[entry_date, "high"]
-            y_exit = candles[candles.date >= exit_date].iloc[-1].low
+            y_exit = candles.loc[exit_date, "low"]
         else:
             entry_color = "red"
             exit_color = "green"
             y_entry = candles.loc[entry_date, "low"]
-            y_exit = candles[candles.date >= exit_date].iloc[-1].high
+            y_exit = candles[exit_date, "high"]
             
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
@@ -401,6 +402,9 @@ class User(Client, Strategy):
                                  y=[y_entry],
                                  mode="markers",
                                  marker=dict(color=entry_color, size=10))
+        if exit_date is None:
+            exit_date = entry_date
+            
         exit_arrow = go.Scatter(x=[exit_date],
                                 y=[y_exit],
                                 mode="markers",
@@ -422,8 +426,56 @@ class User(Client, Strategy):
         start_date = trade.entry_date
         end_date = trade.exit_date
 
-        start_trade = data[(data.date >= start_date)].iloc[0].name -50 if start_date else 0
-        end_trade = data[(data.date <= end_date)].iloc[-1].name
-        data = data.iloc[start_trade:end_trade]
+        if end_date is None:
+            data = data.tail(100)
+        else:
+            start_trade = data[(data.date >= start_date)].iloc[0].name -50 if start_date else 0
+            end_trade = data[(data.date >= end_date)].iloc[0].name+1
+            data = data.iloc[start_trade:end_trade]
         data.index = data.date
         return strategy._plot(data, entry_date=start_date, exit_date=end_date, type_=trade.type)
+    
+    def _set_leverage(strategy, leverage: int):
+        """
+        Set the leverage of the strategy.
+        
+        Parameters
+        ----------
+        leverage : int
+            The leverage of the strategy.
+        """
+        if leverage < 1:
+            if strategy.telegram_bot:
+                strategy.telegram_bot.send_message_to_channel(f"Leverage must be greater than 1.\n\nLeverage: {leverage}")
+            raise ValueError("Leverage must be greater than 1.")
+        try:
+            strategy.futures_change_leverage(symbol=strategy.symbol, leverage=leverage)
+            strategy.telegram_bot.send_message_to_channel(f"Leverage changed to {leverage}")
+            return leverage
+        except BinanceAPIException as e:
+            if strategy.telegram_bot:
+                strategy.telegram_bot.send_message_to_channel(f"Error in Set Leverage\n\nLeverage: {leverage}\nError: {e}")
+            raise e
+        
+    def _set_margin_type(strategy, margin_type: str):
+        """
+        Set the margin type of the strategy.
+        
+        Parameters
+        ----------
+        margin_type : str
+            The margin type of the strategy.
+        """
+        margin_type = margin_type.upper()
+        if margin_type not in ["ISOLATED", "CROSSED"]:
+            if strategy.telegram_bot:
+                strategy.telegram_bot.send_message_to_channel(f"Margin type must be either isolated or crossed.\n\nMargin Type: {margin_type}")
+            raise ValueError("Margin type must be either isolated or crossed.")
+        try:
+            strategy.futures_change_margin_type(symbol=strategy.symbol, margin_type=margin_type)
+            strategy.telegram_bot.send_message_to_channel(f"Margin type changed to {margin_type}")
+            return margin_type
+        except BinanceAPIException as e:
+            if strategy.telegram_bot:
+                strategy.telegram_bot.send_message_to_channel(f"Error in Set Margin Type\n\nMargin Type: {margin_type}\nError: {e}")
+            raise e

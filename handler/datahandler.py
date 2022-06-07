@@ -1,4 +1,3 @@
-from unicodedata import name
 import pandas as pd
 from binance import Client
 import numpy as np
@@ -21,7 +20,7 @@ class DataHandler:
     intervals = {
         '1m': '6 months ago',
         '3m': '9 months ago',
-        '5m': '18 months ago',
+        '5m': '6 months ago',
         '15m': '2 years ago',
         '30m': '3 years ago',
         '1h': '4 years ago',
@@ -50,7 +49,9 @@ class DataHandler:
         if not params:
             raise ValueError("You need to set the data or the interval.")
         
-        self.interval = self._validate_interval(params.get("interval", None))
+        self.symbol = params.get('symbol', "BTCUSDT")
+        self.interval = self._validate_interval(params.get("interval", "5m"))
+        self.months = self._validate_months(params.get("months", 12))
         self.data = self._validate_data(params.get("data", None))
         
     def _validate_interval(self, interval: str) -> str:
@@ -72,6 +73,30 @@ class DataHandler:
         if interval not in self.intervals.keys():
             raise ValueError("The interval is not valid.")
         return interval
+    
+    @staticmethod
+    def _validate_months(months:int=None) -> str:
+        """Validate the months.
+        
+        Description:
+            The months ago that you want to get the data.
+        
+        Parameters
+        ----------
+        months: int
+            The months that you want to validate.
+        
+        Returns
+        -------
+        str
+            The validated months.
+        """
+        if months is None:
+            months = 12
+        if isinstance(months, int) and months > 0:
+            return f"{months} months ago"
+        else:
+            raise ValueError("The months must be a positive integer.")
 
     def _validate_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -155,8 +180,15 @@ class DataHandler:
         """
         # Get the data from the binance API.
         client = Client()
-        start_time = self.intervals[interval]
-        data = client.get_historical_klines("BTCUSDT", interval, start_time)
+        
+        # Check if the symbol is valid.
+        list_of_symbols = client.get_exchange_info()['symbols']
+        try:
+            next(item for item in list_of_symbols if item["symbol"] == self.symbol)
+        except StopIteration:
+            raise ValueError(f"The pair {self.symbol} is not supported.")
+        start_time = self.months
+        data = client.get_historical_klines(self.symbol, interval, start_time)
         
         # Convert the data to a pandas DataFrame.
         data = pd.DataFrame(data)
