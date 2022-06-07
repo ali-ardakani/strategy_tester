@@ -89,8 +89,8 @@ class User(Client, Strategy):
         secondary = next(item for item in strategy.futures_account_balance() if item["asset"] == strategy.secondary_pair)
         secondary = float(secondary["withdrawAvailable"])
         # Set a price of less than $ 1,000
-        if secondary > 50:
-            secondary = 50
+        if secondary > 30:
+            secondary = 30
         else:
             secondary = secondary
         return secondary
