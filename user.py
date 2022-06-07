@@ -249,15 +249,18 @@ class User(Client, Strategy):
                     
                     try:
                         strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
-                        if strategy.telegram_bot:
-                            strategy.telegram_bot.send_message_to_channel(f"Open Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {current_candle['close']}")
-                                                                        
+                        
+                        entry_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms")                                         
                         trade = Trade(type=direction,
-                                entry_date=pd.to_datetime(current_candle.close_time, unit="ms").timestamp()*1000,
+                                entry_date=entry_date_datetime.timestamp()*1000,
                                 entry_price=current_candle.close,
-                                entry_signal=direction,
+                                entry_signal=signal,
                                 contract=quantity,
                                 comment=comment)
+                        
+                        if strategy.telegram_bot:
+                            plot = strategy._plot_to_channel(trade)
+                            strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Open#{direction}#{signal}\n\n\nOpen {direction} in {entry_date_datetime}\n\nOpen Price: {current_candle.close}\nContract: {quantity}\nComment: {comment}")
                         print(f"Open Position with {trade.type} {trade.contract} contracts at {trade.entry_price}")
                         strategy._open_positions.append(trade)
                     except BinanceAPIException as e:
@@ -306,15 +309,17 @@ class User(Client, Strategy):
                         quantity = position.contract * qty
                         strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
                                                 newOrderRespType='RESULT')
-                        position.exit_date = pd.to_datetime(current_candle.close_time, unit="ms").timestamp()*1000
+                        exit_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms")
+                        position.exit_date = exit_date_datetime.timestamp()*1000
                         position.exit_price = current_candle.close
                         position.exit_signal = signal
+                        CalculatorTrade(position, data_trade)
                         if strategy.telegram_bot:
-                            strategy.telegram_bot.send_message_to_channel(f"Close Position\n\nSymbol: {strategy.symbol}\nSide: {side}\nQuantity: {quantity}\n Entry Price: {position.entry_price}\n Exit Price: {current_candle['close']}")
+                            plot = strategy._plot_to_channel(position)
+                            strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Close#{position.type}#{signal}\n\n\nClose {position.type} in {exit_date_datetime}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}\nProfit: {position.profit}\nProfit Percent: {position.profit_percent}\nDraw Down: {position.draw_down}\nEntry Price: {position.entry_price}\nEntry Signal: {position.entry_signal}\nEntry Date: {position.entry_date}\n\nExit Price: {position.exit_price}\nExit Signal: {position.exit_signal}\nExit Date: {position.exit_date}")
                             # strategy.telegram_bot.send_image_to_channel(strategy._plot_to_channel(position))
 
                         print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
-                        CalculatorTrade(position, data_trade)
                         strategy._open_positions.remove(position)
                         strategy._closed_positions.append(position)
                     except BinanceAPIException as e:

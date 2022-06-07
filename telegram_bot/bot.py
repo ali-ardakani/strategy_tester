@@ -52,10 +52,10 @@ class Manager:
             raise ValueError("Channel ID is not set")
         self.bot.send_message(chat_id=self.channel_id, text=text)
         
-    def send_image_to_channel(self, img_bytes: bytes):
+    def send_image_to_channel(self, img_bytes: bytes, caption: str):
         if self.channel_id == None:
             raise ValueError("Channel ID is not set")
-        self.bot.send_photo(chat_id=self.channel_id, photo=img_bytes)
+        self.bot.send_photo(chat_id=self.channel_id, photo=img_bytes, caption=caption)
 
     def _send_message_to_bot(self, update: Update, context: CallbackContext, text: str):
         """Send every message to the bot."""
