@@ -65,7 +65,6 @@ class User(Client, Strategy):
         strategy.data = strategy._validate_data(data)
 
         strategy.counter__ = 0
-        
     @property
     def free_primary(strategy):
         """
@@ -480,7 +479,7 @@ class User(Client, Strategy):
                 strategy.telegram_bot.send_message_to_channel(f"Margin type must be either isolated or crossed.\n\nMargin Type: {margin_type}")
             raise ValueError("Margin type must be either isolated or crossed.")
         try:
-            strategy.futures_change_margin_type(symbol=strategy.symbol, margin_type=margin_type)
+            strategy.futures_change_margin_type(symbol=strategy.symbol, marginType=margin_type)
             strategy.telegram_bot.send_message_to_channel(f"Margin type changed to {margin_type}")
             return margin_type
         except BinanceAPIException as e:
