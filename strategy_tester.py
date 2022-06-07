@@ -66,7 +66,8 @@ class StrategyTester:
         strategy.closed_positions = []
         strategy.links_results = {}
         strategy.threads_sheet = []
-
+        strategy.cash_series = pd.Series(dtype=float)
+        
     @property
     def cash(strategy):
         return strategy._cash
@@ -175,7 +176,9 @@ class StrategyTester:
                     strategy._cash_calc(trade)
                     strategy.closed_positions.append(trade)
                     strategy.open_positions.remove(trade)
-
+                    strategy.cash_series = pd.concat(
+                        [strategy.cash_series, pd.Series(data=strategy._cash, index=[current_candle.close_time])])
+                    
     def _set_data(strategy, data: DataHandler = None):
         """Convert the data to DataHandler object and set the data to the StrategyTester.
         
@@ -382,3 +385,7 @@ class StrategyTester:
             strategy.threads_sheet.append(thread)
 
         return results_objs
+
+    def plot_initial_capital(strategy):
+        strategy.cash_series.index = pd.to_datetime(strategy.cash_series.index, unit="ms")
+        strategy.cash_series.plot(label="Initial Capital Chart")
