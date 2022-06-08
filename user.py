@@ -397,13 +397,17 @@ class User(Client, Strategy):
         elif type_ == "long":
             entry_color = "green"
             exit_color = "red"
-            y_entry = candles.high.iloc[entry_date]
-            y_exit = candles.low.iloc[exit_date]
+            candle_entry = candles.iloc[entry_date]
+            candle_exit = candles.iloc[exit_date]
+            y_entry = candle_entry.high
+            y_exit = candle_exit.low
         else:
             entry_color = "red"
             exit_color = "green"
-            y_entry = candles.low.iloc[entry_date]
-            y_exit = candles.high.iloc[exit_date]
+            candle_entry = candles.iloc[entry_date]
+            candle_exit = candles.iloc[exit_date]
+            y_entry = candle_entry.low
+            y_exit = candle_exit.high
             
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
@@ -411,14 +415,14 @@ class User(Client, Strategy):
                             low=candles.low,
                             close=candles.close)
         
-        entry_arrow = go.Scatter(x=[y_entry.name],
+        entry_arrow = go.Scatter(x=[candle_entry.name],
                                  y=[y_entry],
                                  mode="markers",
                                  marker=dict(color=entry_color, size=10))
         if exit_date is None:
             exit_date = entry_date
             
-        exit_arrow = go.Scatter(x=[y_entry.name],
+        exit_arrow = go.Scatter(x=[candle_exit.name],
                                 y=[y_exit],
                                 mode="markers",
                                 marker=dict(color=exit_color, size=10))
