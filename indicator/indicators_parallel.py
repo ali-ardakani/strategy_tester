@@ -112,9 +112,8 @@ class IndicatorsParallel:
         """
         Return results of indicators.
         """
-        if not self.list_of_indicators:
-            raise ValueError("No indicators added.")
-        self._start()
+        if self.list_of_indicators:
+            self._start()
             
     def get_indicator(self, name:str):
         """

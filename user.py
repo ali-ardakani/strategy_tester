@@ -433,6 +433,16 @@ class User(Client, Strategy):
                            yaxis=dict(title="Price"))
         fig = go.Figure(data=data, layout=layout)
         
+        # disable range slider
+        fig.update_layout(
+            xaxis=dict(
+                rangeslider=dict(
+                    visible=False
+                ),
+                type="date"
+            )
+        )
+        
         # Create a binary image to send to channel
         img_byte = io.BytesIO()
         fig.write_image(img_byte, format="png")
