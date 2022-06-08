@@ -411,14 +411,14 @@ class User(Client, Strategy):
                             low=candles.low,
                             close=candles.close)
         
-        entry_arrow = go.Scatter(x=[entry_date],
+        entry_arrow = go.Scatter(x=[y_entry.name],
                                  y=[y_entry],
                                  mode="markers",
                                  marker=dict(color=entry_color, size=10))
         if exit_date is None:
             exit_date = entry_date
             
-        exit_arrow = go.Scatter(x=[exit_date],
+        exit_arrow = go.Scatter(x=[y_entry.name],
                                 y=[y_exit],
                                 mode="markers",
                                 marker=dict(color=exit_color, size=10))
