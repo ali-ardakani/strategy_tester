@@ -394,13 +394,13 @@ class User(Client, Strategy):
         elif type_ == "long":
             entry_color = "green"
             exit_color = "red"
-            y_entry = candles.loc[entry_date, "high"]
-            y_exit = candles.loc[exit_date, "low"]
+            y_entry = candles.high.iloc[entry_date]
+            y_exit = candles.low.iloc[exit_date]
         else:
             entry_color = "red"
             exit_color = "green"
-            y_entry = candles.loc[entry_date, "low"]
-            y_exit = candles.loc[exit_date, "high"]
+            y_entry = candles.low.iloc[entry_date]
+            y_exit = candles.high.iloc[exit_date]
             
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
@@ -439,11 +439,11 @@ class User(Client, Strategy):
         if end_date is None:
             data = data.tail(100)
         else:
-            start_trade = data[(data.date >= start_date)].iloc[0].name -50 if start_date else 0
-            end_trade = data[(data.date >= end_date)].iloc[0].name+1
-            data = data.iloc[start_trade:end_trade]
+            start_trade = data[(data.date >= start_date)].iloc[0].name if start_date else 0
+            end_trade = data[(data.date >= end_date)].iloc[0].name
+            data = data.iloc[start_trade-50:end_trade+1]
         data.index = data.date
-        return strategy._plot(data, entry_date=start_date, exit_date=end_date, type_=trade.type)
+        return strategy._plot(data, entry_date=start_trade, exit_date=end_trade, type_=trade.type)
     
     def _set_leverage(strategy, leverage: int):
         """
