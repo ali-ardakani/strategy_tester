@@ -384,9 +384,6 @@ class User(Client, Strategy):
     @staticmethod
     def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
         """Plot the candles."""
-        print(entry_date)
-        print(exit_date)
-        print(candles)
         if not type_:
             type_ = "candle"
         if type_ == "candle":
@@ -452,7 +449,7 @@ class User(Client, Strategy):
             start_trade = data[(data.date >= start_date)].iloc[0].name if start_date else 0
             end_trade = data[(data.date >= end_date)].iloc[0].name
             data = data.iloc[start_trade-50:end_trade+1]
-        data.index = data.date
+        data.index = pd.to_datetime(data.date, unit="ms")
         return strategy._plot(data, entry_date=start_trade, exit_date=end_trade, type_=trade.type)
     
     def _set_leverage(strategy, leverage: int):
