@@ -438,6 +438,8 @@ class User(Client, Strategy):
 
         if end_date is None:
             data = data.tail(100)
+            start_trade = data.iloc[0].name
+            end_trade = data.iloc[-1].name
         else:
             start_trade = data[(data.date >= start_date)].iloc[0].name if start_date else 0
             end_trade = data[(data.date >= end_date)].iloc[0].name
