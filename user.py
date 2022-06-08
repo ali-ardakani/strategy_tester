@@ -384,6 +384,9 @@ class User(Client, Strategy):
     @staticmethod
     def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
         """Plot the candles."""
+        print(entry_date)
+        print(exit_date)
+        print(candles)
         if not type_:
             type_ = "candle"
         if type_ == "candle":
@@ -394,13 +397,13 @@ class User(Client, Strategy):
         elif type_ == "long":
             entry_color = "green"
             exit_color = "red"
-            y_entry = candles.high.loc[entry_date]
-            y_exit = candles.low.loc[exit_date]
+            y_entry = candles.high.iloc[entry_date]
+            y_exit = candles.low.iloc[exit_date]
         else:
             entry_color = "red"
             exit_color = "green"
-            y_entry = candles.low.loc[entry_date]
-            y_exit = candles.high.loc[exit_date]
+            y_entry = candles.low.iloc[entry_date]
+            y_exit = candles.high.iloc[exit_date]
             
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
@@ -438,7 +441,7 @@ class User(Client, Strategy):
 
         if end_date is None:
             data = data.tail(100)
-            start_trade = data.iloc[0].name
+            start_trade = data.iloc[-1].name
             end_trade = data.iloc[-1].name
         else:
             start_trade = data[(data.date >= start_date)].iloc[0].name if start_date else 0
