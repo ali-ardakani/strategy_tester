@@ -394,13 +394,13 @@ class User(Client, Strategy):
         elif type_ == "long":
             entry_color = "green"
             exit_color = "red"
-            y_entry = candles.high.iloc[entry_date]
-            y_exit = candles.low.iloc[exit_date]
+            y_entry = candles.high.loc[entry_date]
+            y_exit = candles.low.loc[exit_date]
         else:
             entry_color = "red"
             exit_color = "green"
-            y_entry = candles.low.iloc[entry_date]
-            y_exit = candles.high.iloc[exit_date]
+            y_entry = candles.low.loc[entry_date]
+            y_exit = candles.high.loc[exit_date]
             
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
