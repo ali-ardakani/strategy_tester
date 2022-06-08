@@ -322,10 +322,10 @@ class User(Client, Strategy):
                         position.exit_signal = signal
                         CalculatorTrade(position, data_trade)
                         if strategy.telegram_bot:
-                            strategy.telegram_bot.send_message_to_channel(f"#Close#{position.type}#{position.entry_signal}#{position.exit_signal}\n\n\nClose {position.type} in {exit_date_datetime}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}")
-                            # plot = strategy._plot_to_channel(position)
-                            # strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Close#{position.type}#{signal}\n\n\nClose {position.type} in {exit_date_datetime}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}\nProfit: {position.profit}\nProfit Percent: {position.profit_percent}\nDraw Down: {position.draw_down}\nEntry Price: {position.entry_price}\nEntry Signal: {position.entry_signal}\nEntry Date: {position.entry_date}\n\nExit Price: {position.exit_price}\nExit Signal: {position.exit_signal}\nExit Date: {position.exit_date}")
-                            # strategy.telegram_bot.send_image_to_channel(strategy._plot_to_channel(position))
+                            # strategy.telegram_bot.send_message_to_channel(f"#Close#{position.type}#{position.entry_signal}#{position.exit_signal}\n\n\nClose {position.type} in {exit_date_datetime}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}")
+                            plot = strategy._plot_to_channel(position)
+                            strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Close#{position.type}#{signal}\n\n\nClose {position.type} in {exit_date_datetime}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}\nProfit: {position.profit}\nProfit Percent: {position.profit_percent}\nDraw Down: {position.draw_down}\nEntry Price: {position.entry_price}\nEntry Signal: {position.entry_signal}\nEntry Date: {position.entry_date}\n\nExit Price: {position.exit_price}\nExit Signal: {position.exit_signal}\nExit Date: {position.exit_date}")
+                            strategy.telegram_bot.send_image_to_channel(strategy._plot_to_channel(position))
 
                         print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
                         strategy._open_positions.remove(position)
