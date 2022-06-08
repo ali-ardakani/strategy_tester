@@ -309,6 +309,7 @@ class User(Client, Strategy):
                         # Calculate parameters such as profit, draw down, etc.
                         data_trade = strategy.data.loc[strategy.data.date.between(
                             position.entry_date, current_candle.close_time)]
+                        print("DATA TRADE\n", data_trade)
                         quantity = position.contract * qty
                         # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
                         #                         newOrderRespType='RESULT', reduceOnly=reduceOnly)
