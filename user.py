@@ -306,6 +306,9 @@ class User(Client, Strategy):
                     elif position.type == "short":
                         side = "BUY"
                     try:
+                        print(strategy.data)
+                        print(position.entry_date)
+                        print(current_candle.close_time)
                         # Calculate parameters such as profit, draw down, etc.
                         data_trade = strategy.data.loc[strategy.data.date.between(
                             position.entry_date, current_candle.close_time)]
