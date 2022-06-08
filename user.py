@@ -461,7 +461,7 @@ class User(Client, Strategy):
             end_trade = data.iloc[-1].name
         else:
             start_trade = data[(data.date >= start_date)].iloc[0].name if start_date else 0
-            end_trade = data[(data.date >= end_date)].iloc[0].name
+            end_trade = data[(data.date <= end_date)].iloc[-1].name
             data = data.iloc[start_trade-50:end_trade+1]
         data.index = pd.to_datetime(data.date, unit="ms")
         return strategy._plot(data, entry_date=start_trade, exit_date=end_trade, type_=trade.type)
