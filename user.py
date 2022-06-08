@@ -244,14 +244,13 @@ class User(Client, Strategy):
                 # If there is no open position, then open position (Only used for having 1 open position at the same time)
                 if strategy.open_positions == []:
                     quantity = float(str(strategy.free_secondary * percent_of_assets * 0.997 / current_candle["close"])[:5])
-                    print(strategy.free_secondary * percent_of_assets * 0.997 / current_candle["close"])
                     if direction == "long":
                         side = "BUY"
                     elif direction == "short":
                         side = "SELL"
                     
                     try:
-                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
+                        # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
                         
                         entry_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms").round("1s")                                       
                         trade = Trade(type=direction,
@@ -277,7 +276,8 @@ class User(Client, Strategy):
              qty: float = 1,
              limit: float = None,
              stop: float = None,
-             comment: str = None):
+             comment: str = None,
+             reduceOnly: bool = False):
         """
         Close an open position.
         
@@ -310,8 +310,8 @@ class User(Client, Strategy):
                         data_trade = strategy.data.loc[strategy.data.date.between(
                             position.entry_date, current_candle.close_time)]
                         quantity = position.contract * qty
-                        strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
-                                                newOrderRespType='RESULT')
+                        # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
+                        #                         newOrderRespType='RESULT', reduceOnly=reduceOnly)
                         exit_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms").round("1s")
                         position.exit_date = exit_date_datetime.timestamp()*1000
                         position.exit_price = current_candle.close
@@ -337,8 +337,7 @@ class User(Client, Strategy):
         """
         strategy.current_candle = strategy.data.iloc[-1].name
         for position in strategy.open_positions:
-            print(position.entry_signal)
-            strategy.exit(from_entry=position.entry_signal)
+            strategy.exit(from_entry=position.entry_signal, reduceOnly=True)
             
     def _current_candle_calc(strategy):
         """
@@ -401,7 +400,7 @@ class User(Client, Strategy):
             entry_color = "red"
             exit_color = "green"
             y_entry = candles.loc[entry_date, "low"]
-            y_exit = candles[exit_date, "high"]
+            y_exit = candles.loc[exit_date, "high"]
             
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
