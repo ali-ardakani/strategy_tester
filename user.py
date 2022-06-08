@@ -310,7 +310,7 @@ class User(Client, Strategy):
                         print(position.entry_date)
                         print(current_candle.close_time)
                         # Calculate parameters such as profit, draw down, etc.
-                        data_trade = strategy.data.loc[strategy.data.date.between(
+                        data_trade = strategy.data.loc[strategy.data.close_time.between(
                             position.entry_date, current_candle.close_time)]
                         print("DATA TRADE\n", data_trade)
                         quantity = position.contract * qty
