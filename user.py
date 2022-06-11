@@ -269,7 +269,7 @@ class User(Client, Strategy):
                 
                 try:
                     strategy.conditions.apply(strategy.trade, axis=1)
-                except:
+                except Exception as e:
                     strategy._send_error_message(e)
 
     def entry(strategy,
@@ -644,7 +644,7 @@ class User(Client, Strategy):
                     strategy.telegram_bot.send_message_to_channel(err)
                 raise e
 
-    def _send_error_message(strategy, msg: str):
+    def _send_error_message(strategy, err: Exception):
         """
         Send an error message to the channel.
         Parameters
@@ -656,5 +656,5 @@ class User(Client, Strategy):
             strategy.start_trade = False
             strategy._entry = False
             strategy._exit = False
-            strategy.telegram_bot.send_message_to_channel(msg+"\n"+ "User is down!!")
+            strategy.telegram_bot.send_message_to_channel(str(err)+"\n"+ "User is down!!")
             
