@@ -416,11 +416,11 @@ class User(Client, Strategy):
                     except BinanceAPIException as e:
                         if strategy.telegram_bot:
                             msg = f"Error in Close Position\n\n"\
-                                "Symbol: {strategy.symbol}\n"\
-                                "Side: {side}\nQuantity: {quantity}\n "\
-                                "Entry Price: {position.entry_price}\n "\
-                                "Exit Price: {current_candle['close']}\n"\
-                                "Error: {e}"
+                                f"Symbol: {strategy.symbol}\n"\
+                                f"Side: {side}\nQuantity: {quantity}\n "\
+                                f"Entry Price: {position.entry_price}\n "\
+                                f"Exit Price: {current_candle['close']}\n"\
+                                f"Error: {e}"
                             strategy.telegram_bot.send_message_to_channel(msg)
                         print(msg)
 
@@ -604,7 +604,7 @@ class User(Client, Strategy):
         if margin_type not in ["ISOLATED", "CROSSED"]:
             if strategy.telegram_bot:
                 msg = f"Margin type must be either isolated or crossed.\n\n"\
-                    "Margin Type: {margin_type}"
+                    f"Margin Type: {margin_type}"
                 strategy.telegram_bot.send_message_to_channel(msg)
             raise ValueError("Margin type must be either isolated or crossed.")
         try:
