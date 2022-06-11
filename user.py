@@ -247,11 +247,30 @@ class User(Client, Strategy):
             strategy.close = strategy.data.close
             strategy.volume = strategy.data.volume
             if strategy.start_trade:
-                strategy._init_indicator()
-                strategy.indicators()
-                strategy.start()
-                strategy.condition()
-                strategy.conditions.apply(strategy.trade, axis=1)
+                try:
+                    strategy._init_indicator()
+                except Exception as e:
+                    strategy._send_error_message(e)
+                    
+                try:
+                    strategy.indicators()
+                except Exception as e:
+                    strategy._send_error_message(e)
+                    
+                try:
+                    strategy.start()
+                except Exception as e:
+                    strategy._send_error_message(e)
+                
+                try:
+                    strategy.condition()
+                except Exception as e:
+                    strategy._send_error_message(e)
+                
+                try:
+                    strategy.conditions.apply(strategy.trade, axis=1)
+                except:
+                    strategy._send_error_message(e)
 
     def entry(strategy,
               signal: str,
@@ -624,3 +643,18 @@ class User(Client, Strategy):
                         f"Margin Type: {margin_type}\nError: {e}"
                     strategy.telegram_bot.send_message_to_channel(err)
                 raise e
+
+    def _send_error_message(strategy, msg: str):
+        """
+        Send an error message to the channel.
+        Parameters
+        ----------
+        msg : str
+            The error message to send.
+        """
+        if strategy.telegram_bot:
+            strategy.start_trade = False
+            strategy._entry = False
+            strategy._exit = False
+            strategy.telegram_bot.send_message_to_channel(msg+"\n"+ "User is down!!")
+            
