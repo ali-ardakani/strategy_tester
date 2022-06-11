@@ -381,9 +381,10 @@ class User(Client, Strategy):
     @staticmethod
     def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
         """Plot the candles."""
-        print(candles)
-        print(exit_date)
-        print(entry_date)
+        show_exit = True
+        if exit_date is None:
+            show_exit = False
+            exit_date = entry_date
         if not type_:
             type_ = "candle"
         if type_ == "candle":
@@ -417,14 +418,15 @@ class User(Client, Strategy):
                                  y=[y_entry],
                                  mode="markers",
                                  marker=dict(color=entry_color, size=10))
-        if exit_date is None:
-            exit_date = entry_date
             
-        exit_arrow = go.Scatter(x=[candle_exit.date],
-                                y=[y_exit],
-                                mode="markers",
-                                marker=dict(color=exit_color, size=10))
-        data = [chart, entry_arrow, exit_arrow]
+        if show_exit:
+            exit_arrow = go.Scatter(x=[candle_exit.date],
+                                    y=[y_exit],
+                                    mode="markers",
+                                    marker=dict(color=exit_color, size=10))
+            data = [chart, entry_arrow, exit_arrow]
+        else:
+            data = [chart, entry_arrow]
         layout = go.Layout(title=type_,
                            xaxis=dict(title="Date"),
                            yaxis=dict(title="Price"))
@@ -455,7 +457,7 @@ class User(Client, Strategy):
             data = data.tail(100)
             data = data.reset_index(drop=True)
             start_trade = data.iloc[-1].name
-            end_trade = data.iloc[-1].name
+            end_trade = None
         else:
             start_trade = data[(data.close_time >= start_date)].iloc[0].name if start_date else 0
             # end_trade = data[(data.close_time <= end_date)].iloc[-1].name
