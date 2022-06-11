@@ -482,28 +482,29 @@ class User(Client, Strategy):
               exit_date: int or pd.Timestamp = None,
               type_: str = None):
         """Plot the candles."""
-        print(candles)
-        print(exit_date)
-        print(entry_date)
+        show_exit = True
+        if exit_date is None:
+            show_exit = False
+            exit_date = entry_date
         if not type_:
             type_ = "candle"
         if type_ == "candle":
             entry_color = "blue"
             exit_color = "blue"
-            y_entry = candles.close.iloc[0]
-            y_exit = candles.close.iloc[-1]
+            y_entry= candles.close.loc[0]
+            y_exit = candles.close.loc[-1]
         elif type_ == "long":
             entry_color = "green"
             exit_color = "red"
-            candle_entry = candles.iloc[entry_date]
-            candle_exit = candles.iloc[exit_date]
+            candle_entry = candles.loc[entry_date]
+            candle_exit = candles.loc[exit_date]
             y_entry = candle_entry.high
             y_exit = candle_exit.low
         else:
             entry_color = "red"
             exit_color = "green"
-            candle_entry = candles.iloc[entry_date]
-            candle_exit = candles.iloc[exit_date]
+            candle_entry = candles.loc[entry_date]
+            candle_exit = candles.loc[exit_date]
             y_entry = candle_entry.low
             y_exit = candle_exit.high
 
@@ -518,14 +519,15 @@ class User(Client, Strategy):
                                  y=[y_entry],
                                  mode="markers",
                                  marker=dict(color=entry_color, size=10))
-        if exit_date is None:
-            exit_date = entry_date
-
-        exit_arrow = go.Scatter(x=[candle_exit.date],
-                                y=[y_exit],
-                                mode="markers",
-                                marker=dict(color=exit_color, size=10))
-        data = [chart, entry_arrow, exit_arrow]
+            
+        if show_exit:
+            exit_arrow = go.Scatter(x=[candle_exit.date],
+                                    y=[y_exit],
+                                    mode="markers",
+                                    marker=dict(color=exit_color, size=10))
+            data = [chart, entry_arrow, exit_arrow]
+        else:
+            data = [chart, entry_arrow]
         layout = go.Layout(title=type_,
                            xaxis=dict(title="Date"),
                            yaxis=dict(title="Price"))
@@ -550,7 +552,7 @@ class User(Client, Strategy):
             data = data.tail(100)
             data = data.reset_index(drop=True)
             start_trade = data.iloc[-1].name
-            end_trade = data.iloc[-1].name
+            end_trade = None
         else:
             start_trade = data[(data.close_time >= start_date
                                 )].iloc[0].name if start_date else 0
