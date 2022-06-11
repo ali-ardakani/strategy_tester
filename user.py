@@ -191,27 +191,27 @@ class User(Client, Strategy):
         """
         Convert kline data to pandas dataframe
         """
-        # if msg["k"]["x"]:
-        frame = pd.DataFrame([msg['k']])
-        frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
-        frame.columns = ['date', 'close_time', 'open', 'close', 'high', 'low', 'volume']
-        frame.index = frame['date']
-        frame = frame.astype(float)
-        strategy.tmp_data = pd.concat([strategy.tmp_data, frame], axis=0)
-        while strategy.data.empty:
-            pass
-        strategy._combine_data()
-        strategy.high = strategy.data.high
-        strategy.low = strategy.data.low
-        strategy.open = strategy.data.open
-        strategy.close = strategy.data.close
-        strategy.volume = strategy.data.volume
-        if strategy.start_trade:
-            strategy._init_indicator()
-            strategy.indicators()
-            strategy.start()
-            strategy.condition()
-            strategy.conditions.apply(strategy.trade, axis=1)
+        if msg["k"]["x"]:
+            frame = pd.DataFrame([msg['k']])
+            frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
+            frame.columns = ['date', 'close_time', 'open', 'close', 'high', 'low', 'volume']
+            frame.index = frame['date']
+            frame = frame.astype(float)
+            strategy.tmp_data = pd.concat([strategy.tmp_data, frame], axis=0)
+            while strategy.data.empty:
+                pass
+            strategy._combine_data()
+            strategy.high = strategy.data.high
+            strategy.low = strategy.data.low
+            strategy.open = strategy.data.open
+            strategy.close = strategy.data.close
+            strategy.volume = strategy.data.volume
+            if strategy.start_trade:
+                strategy._init_indicator()
+                strategy.indicators()
+                strategy.start()
+                strategy.condition()
+                strategy.conditions.apply(strategy.trade, axis=1)
             
     def entry(strategy,
               signal: str,
