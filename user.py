@@ -2,7 +2,6 @@ from binance import Client
 from typing import Dict, Optional
 import pandas as pd
 import numpy as np
-import pandas as pd
 from binance import ThreadedWebsocketManager
 from binance.exceptions import BinanceAPIException
 import re
@@ -13,40 +12,46 @@ import math
 import plotly.graph_objects as go
 import io
 
+
 class User(Client, Strategy):
-    
+
     _user = True
     _exit = False
     _entry = False
-    
-    def __init__(strategy, 
-                api_key: str, 
-                api_secret: str, 
-                primary_pair: str,
-                secondary_pair: str,
-                interval: str,
-                leverage: int,
-                margin_type: str,
-                requests_params: Optional[Dict[str, str]] = None, 
-                tld: str = 'com',
-                testnet: bool = False, 
-                data: Optional[pd.DataFrame] = None,
-                telegram_bot = None,
-                **kwargs):
-        super(Client, strategy).__init__(api_key, api_secret, requests_params, tld, testnet)
-        strategy.primary_pair, strategy.secondary_pair = strategy._validate_pair(primary_pair, secondary_pair)
-        strategy.threaded_websocket_manager = ThreadedWebsocketManager(api_key, api_secret)
-        
+
+    def __init__(strategy,
+                 api_key: str,
+                 api_secret: str,
+                 primary_pair: str,
+                 secondary_pair: str,
+                 interval: str,
+                 leverage: int,
+                 margin_type: str,
+                 requests_params: Optional[Dict[str, str]] = None,
+                 tld: str = 'com',
+                 testnet: bool = False,
+                 data: Optional[pd.DataFrame] = None,
+                 telegram_bot=None,
+                 **kwargs):
+        super(Client, strategy).__init__(api_key,
+                                         api_secret,
+                                         requests_params,
+                                         tld,
+                                         testnet)
+        strategy.primary_pair, strategy.secondary_pair = \
+            strategy._validate_pair(primary_pair, secondary_pair)
+        strategy.threaded_websocket_manager = \
+            ThreadedWebsocketManager(api_key, api_secret)
         strategy.current_candle = None
         strategy._open_positions = []
         strategy._closed_positions = []
-        strategy._in_bot = False # 
+        strategy._in_bot = False
         strategy.start_trade = False
-        
         strategy.telegram_bot = telegram_bot
-        
         if strategy.open_positions != []:
-            strategy.telegram_bot.send_message_to_channel(f"{strategy.primary_pair}{strategy.secondary_pair} has open positions.")
+            strategy.telegram_bot.send_message_to_channel(
+                f"{strategy.primary_pair}{strategy.secondary_pair} has open positions."
+                )
             
         strategy.leverage = strategy._set_leverage(leverage)
         strategy.margin_type = strategy._set_margin_type(margin_type)
