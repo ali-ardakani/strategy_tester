@@ -98,8 +98,8 @@ class User(Client, Strategy):
                          if item["asset"] == strategy.secondary_pair)
         secondary = float(secondary["withdrawAvailable"])
         # Set a price of less than $ 1,000
-        if secondary > 50:
-            secondary = 50
+        if secondary > 100:
+            secondary = 100
         else:
             secondary = secondary
         return secondary
@@ -294,12 +294,12 @@ class User(Client, Strategy):
                         side = "SELL"
 
                     try:
-                        strategy.futures_create_order(
-                            symbol=strategy.symbol,
-                            side=side,
-                            type='MARKET',
-                            quantity=quantity,
-                            newOrderRespType='RESULT')
+                        # strategy.futures_create_order(
+                        #     symbol=strategy.symbol,
+                        #     side=side,
+                        #     type='MARKET',
+                        #     quantity=quantity,
+                        #     newOrderRespType='RESULT')
 
                         trade = Trade(type=direction,
                                       entry_date=strategy._prepare_time(
@@ -377,13 +377,13 @@ class User(Client, Strategy):
                                 position.entry_date,
                                 current_candle.close_time + 1)]
                         quantity = position.contract * qty
-                        strategy.futures_create_order(
-                            symbol=strategy.symbol,
-                            side=side,
-                            type='MARKET',
-                            quantity=quantity,
-                            newOrderRespType='RESULT',
-                            reduceOnly=reduceOnly)
+                        # strategy.futures_create_order(
+                        #     symbol=strategy.symbol,
+                        #     side=side,
+                        #     type='MARKET',
+                        #     quantity=quantity,
+                        #     newOrderRespType='RESULT',
+                        #     reduceOnly=reduceOnly)
                         position.exit_date = strategy._prepare_time(
                             current_candle.close_time)
                         position.exit_price = current_candle.close
