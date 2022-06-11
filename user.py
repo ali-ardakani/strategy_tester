@@ -251,10 +251,9 @@ class User(Client, Strategy):
                     
                     try:
                         # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity, newOrderRespType='RESULT')
-                        
-                        entry_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms").round("1s")                                       
+                                                          
                         trade = Trade(type=direction,
-                                entry_date=entry_date_datetime.timestamp()*1000,
+                                entry_date=strategy._prepare_time(current_candle.close_time),
                                 entry_price=current_candle.close,
                                 entry_signal=signal,
                                 contract=quantity,
@@ -262,7 +261,7 @@ class User(Client, Strategy):
                         
                         if strategy.telegram_bot:
                             plot = strategy._plot_to_channel(trade)
-                            strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Open#{direction}#{signal}\n\n\nOpen {direction} in {entry_date_datetime}\n\nOpen Price: {current_candle.close}\nContract: {quantity}\nComment: {comment}")
+                            strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Open#{direction}#{signal}\n\n\nOpen {direction} in {strategy._round_time(current_candle.close_time)}\n\nOpen Price: {current_candle.close}\nContract: {quantity}\nComment: {comment}")
                         print(f"Open Position with {trade.type} {trade.contract} contracts at {trade.entry_price}")
                         strategy._open_positions.append(trade)
                     except BinanceAPIException as e:
@@ -306,25 +305,20 @@ class User(Client, Strategy):
                     elif position.type == "short":
                         side = "BUY"
                     try:
-                        print(strategy.data)
-                        print(position.entry_date)
-                        print(current_candle.close_time)
                         # Calculate parameters such as profit, draw down, etc.
                         data_trade = strategy.data.loc[strategy.data.close_time.between(
                             position.entry_date, current_candle.close_time+1)]
-                        print("DATA TRADE\n", data_trade)
                         quantity = position.contract * qty
                         # strategy.futures_create_order(symbol=strategy.symbol, side=side, type='MARKET', quantity=quantity,
                         #                         newOrderRespType='RESULT', reduceOnly=reduceOnly)
-                        exit_date_datetime = pd.to_datetime(current_candle.close_time, unit="ms").round("1s")
-                        position.exit_date = exit_date_datetime.timestamp()*1000
+                        position.exit_date = strategy._prepare_time(current_candle.close_time)
                         position.exit_price = current_candle.close
                         position.exit_signal = signal
                         CalculatorTrade(position, data_trade)
                         if strategy.telegram_bot:
                             # strategy.telegram_bot.send_message_to_channel(f"#Close#{position.type}#{position.entry_signal}#{position.exit_signal}\n\n\nClose {position.type} in {exit_date_datetime}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}")
                             plot = strategy._plot_to_channel(position)
-                            strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Close#{position.type}#{signal}\n\n\nClose {position.type} in {exit_date_datetime}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}\nProfit: {position.profit}\nProfit Percent: {position.profit_percent}\nDraw Down: {position.draw_down}\nEntry Price: {position.entry_price}\nEntry Signal: {position.entry_signal}\nEntry Date: {position.entry_date}\n\nExit Price: {position.exit_price}\nExit Signal: {position.exit_signal}\nExit Date: {position.exit_date}")
+                            strategy.telegram_bot.send_image_to_channel(plot, caption=f"#Close#{position.type}#{signal}\n\n\nClose {position.type} in {strategy._round_time(current_candle.close_time)}\n\nClose Price: {current_candle.close}\nContract: {position.contract}\nComment: {comment}\nProfit: {position.profit}\nProfit Percent: {position.profit_percent}\nDraw Down: {position.draw_down}\nEntry Price: {position.entry_price}\nEntry Signal: {position.entry_signal}\nEntry Date: {position.entry_date}\n\nExit Price: {position.exit_price}\nExit Signal: {position.exit_signal}\nExit Date: {position.exit_date}")
 
                         print(f"Closing position with {position.type} {position.contract} contracts at {position.exit_price}")
                         strategy._open_positions.remove(position)
@@ -409,20 +403,21 @@ class User(Client, Strategy):
             y_entry = candle_entry.low
             y_exit = candle_exit.high
             
+        candles.index = pd.to_datetime(candles.date, unit="ms")
         chart = go.Candlestick(x=candles.index,
                             open=candles.open,
                             high=candles.high,
                             low=candles.low,
                             close=candles.close)
         
-        entry_arrow = go.Scatter(x=[candle_entry.name],
+        entry_arrow = go.Scatter(x=[candle_entry.date],
                                  y=[y_entry],
                                  mode="markers",
                                  marker=dict(color=entry_color, size=10))
         if exit_date is None:
             exit_date = entry_date
             
-        exit_arrow = go.Scatter(x=[candle_exit.name],
+        exit_arrow = go.Scatter(x=[candle_exit.date],
                                 y=[y_exit],
                                 mode="markers",
                                 marker=dict(color=exit_color, size=10))
@@ -453,17 +448,17 @@ class User(Client, Strategy):
         start_date = trade.entry_date
         end_date = trade.exit_date
 
-        # if end_date is None:
-        data = data.tail(100)
-        data = data.reset_index(drop=True)
-        start_trade = data.iloc[-1].name
-        end_trade = data.iloc[-1].name
-        # else:
-        #     start_trade = data[(data.close_time >= start_date)].iloc[0].name if start_date else 0
-        #     # end_trade = data[(data.close_time <= end_date)].iloc[-1].name
-        #     end_trade = data.iloc[-1].name
-        #     data = data.iloc[start_trade-50:end_trade+1]
-        data.index = pd.to_datetime(data.date, unit="ms")
+        if end_date is None:
+            data = data.tail(100)
+            data = data.reset_index(drop=True)
+            start_trade = data.iloc[-1].name
+            end_trade = data.iloc[-1].name
+        else:
+            start_trade = data[(data.close_time >= start_date)].iloc[0].name if start_date else 0
+            # end_trade = data[(data.close_time <= end_date)].iloc[-1].name
+            end_trade = data.iloc[-1].name
+            data = data.iloc[start_trade-50:end_trade+1]
+
         return strategy._plot(data, entry_date=start_trade, exit_date=end_trade, type_=trade.type)
     
     def _set_leverage(strategy, leverage: int):

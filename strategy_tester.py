@@ -1,3 +1,4 @@
+from datetime import datetime
 from strategy_tester.handler.datahandler import DataHandler
 from strategy_tester.models.trade import Trade
 import pandas as pd
@@ -126,7 +127,7 @@ class StrategyTester:
             strategy._commission_calc(qty)
             current_candle = strategy._current_candle_calc()
             trade = Trade(type=direction,
-                          entry_date=current_candle.close_time, # Because close time a few mili seconds before the next candle
+                          entry_date=strategy._prepare_time(current_candle.close_time), # Because close time a few mili seconds before the next candle
                           entry_price=current_candle.close,
                           entry_signal=signal,
                           contract=strategy._contract_calc(qty),
@@ -169,7 +170,7 @@ class StrategyTester:
                 data_trade = strategy.data.loc[strategy.data.date.between(
                     trade.entry_date, current_candle.close_time)]
                 if not data_trade.empty:
-                    trade.exit_date = current_candle.close_time
+                    trade.exit_date = strategy._prepare_time(current_candle.close_time)
                     trade.exit_price = current_candle.close
                     trade.exit_signal = signal
                     CalculatorTrade(trade, data_trade)
@@ -178,6 +179,30 @@ class StrategyTester:
                     strategy.open_positions.remove(trade)
                     strategy.cash_series = pd.concat(
                         [strategy.cash_series, pd.Series(data=strategy._cash, index=[current_candle.close_time])])
+                    
+    @staticmethod                    
+    def _round_time(time: int) -> datetime:
+        """
+        Round time to the nearest 1 second.
+        
+        Description:
+            This function is written because when the strategy wants to open a position, it opens with the closing time of the previous candlestick, which is actually slightly shorter than the opening time of the actual candlestick, so to compensate for this difference, this function is set to 1 Rounds in seconds.
+        """
+        
+        return pd.to_datetime(time, unit="ms").round("1s")
+    
+    @staticmethod
+    def _convert_time(time: datetime) -> int:
+        """
+        Convert time to milliseconds.
+        """
+        return time.timestamp() * 1000
+    
+    def _prepare_time(self, time: int) -> int:
+        """
+        Prepare time to be used in the strategy.
+        """
+        return self._convert_time(self._round_time(time))
                     
     def _set_data(strategy, data: DataHandler = None):
         """Convert the data to DataHandler object and set the data to the StrategyTester.
