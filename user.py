@@ -389,20 +389,20 @@ class User(Client, Strategy):
         if type_ == "candle":
             entry_color = "blue"
             exit_color = "blue"
-            y_entry= candles.close.iloc[0]
-            y_exit = candles.close.iloc[-1]
+            y_entry= candles.close.loc[0]
+            y_exit = candles.close.loc[-1]
         elif type_ == "long":
             entry_color = "green"
             exit_color = "red"
-            candle_entry = candles.iloc[entry_date]
-            candle_exit = candles.iloc[exit_date]
+            candle_entry = candles.loc[entry_date]
+            candle_exit = candles.loc[exit_date]
             y_entry = candle_entry.high
             y_exit = candle_exit.low
         else:
             entry_color = "red"
             exit_color = "green"
-            candle_entry = candles.iloc[entry_date]
-            candle_exit = candles.iloc[exit_date]
+            candle_entry = candles.loc[entry_date]
+            candle_exit = candles.loc[exit_date]
             y_entry = candle_entry.low
             y_exit = candle_exit.high
             
