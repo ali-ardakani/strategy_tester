@@ -247,30 +247,30 @@ class User(Client, Strategy):
             strategy.close = strategy.data.close
             strategy.volume = strategy.data.volume
             if strategy.start_trade:
-                try:
-                    strategy._init_indicator()
-                except Exception as e:
-                    strategy._send_error_message(e)
+                # try:
+                strategy._init_indicator()
+                # except Exception as e:
+                    # strategy._send_error_message(e)
                     
-                try:
-                    strategy.indicators()
-                except Exception as e:
-                    strategy._send_error_message(e)
+                # try:
+                strategy.indicators()
+                # except Exception as e:
+                    # strategy._send_error_message(e)
                     
-                try:
-                    strategy.start()
-                except Exception as e:
-                    strategy._send_error_message(e)
+                # try:
+                strategy.start()
+                # except Exception as e:
+                    # strategy._send_error_message(e)
                 
-                try:
-                    strategy.condition()
-                except Exception as e:
-                    strategy._send_error_message(e)
+                # try:
+                strategy.condition()
+                # except Exception as e:
+                    # strategy._send_error_message(e)
                 
-                try:
-                    strategy.conditions.apply(strategy.trade, axis=1)
-                except Exception as e:
-                    strategy._send_error_message(e)
+                # try:
+                strategy.conditions.apply(strategy.trade, axis=1)
+                # except Exception as e:
+                    # strategy._send_error_message(e)
 
     def entry(strategy,
               signal: str,
