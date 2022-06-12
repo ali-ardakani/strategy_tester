@@ -26,7 +26,8 @@ class IndicatorsParallel:
         if self._user:
             for indicator in indicators:
                 indicator.user = True
-            
+        for indicator in indicators:
+            indicator.parameters = self.__dict__.get("parameters", None)
         self.list_of_indicators.extend(indicators)
        
     def _wrapper(self, indicator:Indicator):
