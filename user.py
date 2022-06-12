@@ -70,6 +70,11 @@ class User(Client, Strategy):
         strategy.data = strategy._validate_data(data)
 
         strategy.counter__ = 0
+        
+    @property
+    def hlcc4(strategy):
+        strategy._hlcc4 = (strategy.high + strategy.low + strategy.close + strategy.close)/4
+        return strategy._hlcc4
 
     @property
     def free_primary(strategy):
