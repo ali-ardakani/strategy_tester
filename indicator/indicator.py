@@ -1,6 +1,4 @@
 import hashlib
-from inspect import Parameter
-from . .handler.datahandler import DataHandler as dh
 import pandas as pd
 import os
 
@@ -10,15 +8,22 @@ class Indicator:
     Description:
         This class is used to create an indicator for use in class IndicatorsParallel.
     """
-    def __init__(self, name:str, func:callable, args=None, wait=True, user=False, **kwargs):
+    def __init__(self, name:str, func:callable, args=None, wait=True, user=False, kwargs=None):
         """ Initialize the indicator """
         self.name = name
         self.func = func
         self.wait = wait
         self.user = user
         self.parameters = None
-        self.args = args
-        self.kwargs = kwargs
+        self.args = self._validate(args)
+        self.kwargs = self._validate(kwargs)
+        
+    @staticmethod
+    def _validate(ins:list or dict) -> list or dict:
+        if ins is None:
+            return {}
+        else:
+            return ins
         
     def _set_cache(self):
         """
