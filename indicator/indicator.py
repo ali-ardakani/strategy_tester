@@ -1,6 +1,8 @@
 import hashlib
 import pandas as pd
 import os
+import sys
+from IPython import get_ipython
 
 class Indicator:
     """ Indicator class.
@@ -40,7 +42,7 @@ class Indicator:
         # Generate the name of the cache file based on the args and kwargs
         hash_key = self._convert_hash(self.parameters, *self.args, **self.kwargs)
         name = f"{self.name}_{self.func.__name__}_{hash_key}"
-        result = self.func(*self.args, **self.kwargs).rename(self.name)
+        result = self._func()
         result.to_pickle('./cache/{}.pickle'.format(name))
         return result
         
@@ -79,6 +81,17 @@ class Indicator:
             
         hash_key = f"{hashlib.sha256(str(args).encode('utf-8')).hexdigest()}_{hashlib.sha256(str(kwargs).encode('utf-8')).hexdigest()}_{hashlib.sha256(str(parameters).encode('utf-8')).hexdigest()}"
         return hash_key
+    
+    def _func(self):
+        try:
+            res = self.func(*self.args, **self.kwargs).rename(self.name)
+            return res
+        except Exception as e:
+            # Kill the current process
+            if get_ipython() is not None:
+                os._exit(00)
+            else:
+                os._exit(0)
         
     def __repr__(self) -> str:
         return self.name
@@ -88,7 +101,7 @@ class Indicator:
 
     def __call__(self):
         if self.user:
-            return self.func(*self.args, **self.kwargs).rename(self.name)
+            return self._func()
         else:
             exist, result = self._get_cache()
             if not exist:

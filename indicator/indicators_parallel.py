@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue, Manager
+from multiprocessing import Process, Manager
 from .indicator import Indicator
 import os
 
@@ -86,7 +86,6 @@ class IndicatorsParallel:
         for indicator in self.list_of_indicators:
             p = Process(target=self._wrapper, args=(indicator,))
             p.start()
-            print("Started indicator: {}".format(indicator.name))
             self.processes[indicator.name] = p
 
         # list_i = self.list_of_indicators
@@ -107,8 +106,7 @@ class IndicatorsParallel:
             if self.processes[process].is_alive():
                 self.processes[process].join()
             self.__dict__[process] = self.returns[process]
-    
-        
+         
     def start(self):
         """
         Return results of indicators.

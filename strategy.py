@@ -11,24 +11,23 @@ from .sheet import Sheet
 from datetime import datetime
 import plotly.graph_objects as go
 
+
 class Strategy(StrategyTester, IndicatorsParallel):
     """
     StrategyTester is a class that tests a strategy.
-    
     StrategyTester can be used to test a strategy in financial markets.
     """
-    
-        
+
     @property
     def conditions(strategy):
         return strategy._conditions
-    
+
     @conditions.setter
     def conditions(strategy, *conditions):
         parts = [strategy.data]
         parts.extend(*conditions)
         strategy._conditions = pd.concat(parts, axis=1)
-        
+
     @property
     def hlcc4(strategy):
         _hlcc4 = strategy.__dict__.get("_hlcc4", None)
@@ -36,7 +35,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
             strategy._hlcc4 = (strategy.high + strategy.low + strategy.close + strategy.close)/4
         return strategy._hlcc4
 
-    def __init__(strategy) -> None:
+    def __init__(strategy, **kwargs) -> None:
         """ StrategyTester constructor.
 
         Description:
@@ -370,6 +369,39 @@ class Strategy(StrategyTester, IndicatorsParallel):
         data = data.iloc[start_trade:end_trade]
         data.index = data.date
         strategy._plot(data, entry_date=start_date, exit_date=end_date, type_=trade.type)
+        
+    def plot_indicators(strategy, list_of_indicators: list, start_date: str=None, end_date: str=None) -> None:
+        """Plot the indicators.
+        
+        Parameters
+        ----------
+        list_of_indicators: list
+            The list of the indicators that you want to plot.
+            In the list, you must put the dictionary of the indicator.
+            example:
+            [{"name": "sma", "value": ta.sma(data.close, length=20), "color": "blue"}, {"name": "ema", "value": ta.ema(data.close, length=20), "color": "red"}]
+        start_date: str
+            The start date of the backtest.
+        end_date: str
+            The end date of the backtest.
+        """
+        chart = go.Candlestick(x=strategy.data.index,
+                    open=strategy.data.open,
+                    high=strategy.data.high,
+                    low=strategy.data.low,
+                    close=strategy.data.close)
+        indicators = [chart]
+        for indicator in list_of_indicators:
+            name = indicator["name"] if "name" in indicator else indicator["value"].name
+            indicators.append(go.Scatter(x=strategy.data.index,
+                                         y=indicator["value"],
+                                         name=name,
+                                         marker=dict(color=indicator["color"])))
+        layout = go.Layout(title="Indicators",
+                           xaxis=dict(title="Date"),
+                           yaxis=dict(title="Price"))
+        fig = go.Figure(data=indicators, layout=layout)
+        fig.show()
         
     def result(strategy):
         """

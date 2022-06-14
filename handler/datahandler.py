@@ -193,7 +193,7 @@ class DataHandler:
         # Convert the data to a pandas DataFrame.
         data = pd.DataFrame(data)
         data.columns = ['date','open', 'high', 'low', 'close', 'volume','close_time', 'qav','num_trades','taker_base_vol','taker_quote_vol', 'ignore']
-        data.drop(['qav','num_trades','taker_base_vol','taker_quote_vol', 'ignore'], axis=1, inplace=True)
+        # data.drop(['qav','num_trades','taker_base_vol','taker_quote_vol', 'ignore'], axis=1, inplace=True)
         data = data.astype({'date': 'float', 'open': 'float64', 'high': 'float64', 'low': 'float64', 'close': 'float64', 'volume': 'float64', 'close_time': 'float'})
         
         return data
