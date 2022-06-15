@@ -475,12 +475,12 @@ class User(Client, Strategy):
         comment : str
             The comment of the position.
         """
-        if strategy._permission_entry(signal,
-                                      direction,
-                                      percent_of_assets,
-                                      limit,
-                                      stop,
-                                      comment):
+        if strategy._permission_entry(signal=signal,
+                                      direction=direction,
+                                      percent_of_assets=percent_of_assets,
+                                      limit=limit,
+                                      stop=stop,
+                                      comment=comment):
             current_candle = strategy.data.loc[strategy.current_candle]
             if strategy.start_trade and strategy.data.date.iloc[
                     -1] == current_candle["date"]:
