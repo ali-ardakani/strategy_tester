@@ -1,16 +1,19 @@
-from binance import Client
-from typing import Dict, Optional
-import pandas as pd
-import numpy as np
-from binance import ThreadedWebsocketManager
-from binance.exceptions import BinanceAPIException
-import re
-from strategy_tester.models import Trade
-from strategy_tester.commands import CalculatorTrade
-from .strategy import Strategy
-import math
-import plotly.graph_objects as go
 import io
+import math
+import re
+from typing import Dict, Optional
+
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from binance import Client, ThreadedWebsocketManager
+from binance.exceptions import BinanceAPIException
+
+from strategy_tester.commands import CalculatorTrade
+from strategy_tester.decorator import validate_float
+from strategy_tester.models import Trade
+
+from .strategy import Strategy
 
 
 class User(Client, Strategy):
@@ -18,6 +21,8 @@ class User(Client, Strategy):
     _user = True
     _exit = False
     _entry = False
+    _permission_long = True
+    _permission_short = True
 
     def __init__(strategy,
                  api_key: str,
@@ -27,6 +32,7 @@ class User(Client, Strategy):
                  interval: str,
                  leverage: int,
                  margin_type: str,
+                 custom_amount_cash: float = None,
                  requests_params: Optional[Dict[str, str]] = None,
                  tld: str = 'com',
                  testnet: bool = False,
@@ -51,6 +57,8 @@ class User(Client, Strategy):
             strategy.telegram_bot.send_message_to_channel(msg)
         strategy.leverage = strategy._set_leverage(leverage)
         strategy.margin_type = strategy._set_margin_type(margin_type)
+        strategy.custom_amount_cash = strategy.\
+            _validate_custom_amount_cash(custom_amount_cash)
         # Start the thread's activity.
         strategy.threaded_websocket_manager.start()
         # Create a tmp dataframe for add kline websocket data
@@ -74,7 +82,7 @@ class User(Client, Strategy):
     @property
     def hlcc4(strategy):
         hlcc = strategy.high + strategy.low + strategy.close + strategy.close
-        strategy._hlcc4 = hlcc/4
+        strategy._hlcc4 = hlcc / 4
         return strategy._hlcc4
 
     @property
@@ -104,10 +112,11 @@ class User(Client, Strategy):
                          if item["asset"] == strategy.secondary_pair)
         secondary = float(secondary["withdrawAvailable"])
         # Set a price of less than $ 1,000
-        if secondary > 100:
-            secondary = 100
-        else:
-            secondary = secondary
+        if strategy.custom_amount_cash:
+            if secondary > strategy.custom_amount_cash:
+                secondary = strategy.custom_amount_cash
+            else:
+                secondary = secondary
         return secondary
 
     @property
@@ -141,6 +150,14 @@ class User(Client, Strategy):
                     comment="This is the first trade after restart bot.")
                 strategy._open_positions.append(trade)
             return strategy._open_positions
+
+    @staticmethod
+    @validate_float
+    def _validate_custom_amount_cash(custom_amount_cash):
+        if custom_amount_cash < 0:
+            raise ValueError("The custom amount cash must be greater than 0.")
+        else:
+            return custom_amount_cash
 
     def _get_remind_kline(strategy, kline: pd.DataFrame = None):
         """
@@ -207,27 +224,23 @@ class User(Client, Strategy):
                 strategy.symbol,
                 strategy.interval)
 
+        # Run stream live account
+        try:
+            strategy.listen_key = strategy.futures_stream_get_listen_key()
+            strategy.stream_live_account = \
+                strategy.threaded_websocket_manager\
+                    .start_futures_multiplex_socket(
+                        callback=strategy.__stream_live_account,
+                        streams=[strategy.listen_key],
+                    )
+        except Exception as e:
+            strategy._send_error_message(e)
+
         # Get remind kline data
         data = strategy._get_remind_kline(data)
         print(len(data))
 
         return data
-
-    def _stream_live_account(strategy):
-        """
-        Stream live account data
-        """
-        # Run stream live account
-        try:
-            listen_key = strategy.futures_stream_get_listen_key()
-            strategy.stream_live_account = \
-                strategy.threaded_websocket_manager\
-                    .start_futures_multiplex_socket(
-                        callback=strategy.__stream_live_account,
-                        streams=[listen_key],
-                    )
-        except Exception as e:
-            strategy._send_error_message(e)
 
     def __stream_live_account(strategy, msg: dict):
         """
@@ -240,7 +253,7 @@ class User(Client, Strategy):
 
         if msg["e"] == "listenKeyExpired":
             # Get new listen key and restart stream live account
-            strategy._stream_live_account()
+            strategy.futures_stream_keepalive(strategy.listen_key)
         elif msg["e"] == "MARGIN_CALL":
             # Convert int time to datetime
             event_time = pd.to_datetime(msg["E"], unit="ms")
@@ -462,7 +475,12 @@ class User(Client, Strategy):
         comment : str
             The comment of the position.
         """
-        if strategy._entry:
+        if strategy._permission_entry(signal,
+                                      direction,
+                                      percent_of_assets,
+                                      limit,
+                                      stop,
+                                      comment):
             current_candle = strategy.data.loc[strategy.current_candle]
             if strategy.start_trade and strategy.data.date.iloc[
                     -1] == current_candle["date"]:
@@ -516,6 +534,27 @@ class User(Client, Strategy):
                                 f"\nError: {e}"
                             strategy.telegram_bot.send_message_to_channel(msg)
                         print(msg)
+
+    def _permission_entry(strategy, **kwargs):
+        """Check if the user has permission to open a position"""
+        if strategy._entry:
+            side = kwargs["direction"]
+            if strategy._permission_long and side == "long":
+                strategy.entry(**kwargs)
+            elif side == "long":
+                # Send message to Telegram
+                if strategy.telegram_bot:
+                    msg = "You don't have permission to open a long position"\
+                        " so strategy passed"
+                    strategy.telegram_bot.send_message_to_channel(msg)
+            elif strategy._permission_short and side == "short":
+                strategy.entry(**kwargs)
+            elif side == "short":
+                # Send message to Telegram
+                if strategy.telegram_bot:
+                    msg = "You don't have permission to open a short position"\
+                        " so strategy passed"
+                    strategy.telegram_bot.send_message_to_channel(msg)
 
     def exit(strategy,
              from_entry: str,
