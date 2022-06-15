@@ -104,8 +104,8 @@ class Manager:
         update.message.reply_text(text=\
         "/start - Start or Restart the user.\n"\
         "/authorization - Authorization the user.\n"\
-        "/stop_enter_long - stop user enter long.\n"\
-        "/stop_enter_short - stop user enter short.\n"\
+        "/stop_entry_long - stop user enter long.\n"\
+        "/stop_entry_short - stop user enter short.\n"\
         "/stop_not_close_position - Stop the user and not close the position.\n"\
         "/stop_close_position - Stop the user and close the position.\n"\
         "/stop_close_position_with_close_condition -"\
@@ -135,7 +135,6 @@ class Manager:
     def _stop_enter_long(self, update: Update, context: CallbackContext, permission_code: bool = False):
         """Stop the user enter long."""
         self._permission(update, context, self._stop_enter_long)
-        print("stop enter long")
         if permission_code:
             self.user._permission_long = False
             update.message.reply_text(text="User is stop enter long.")
