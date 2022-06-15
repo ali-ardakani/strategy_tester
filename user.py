@@ -227,6 +227,7 @@ class User(Client, Strategy):
         # Run stream live account
         try:
             strategy.listen_key = strategy.futures_stream_get_listen_key()
+            print(strategy.listen_key)
             strategy.stream_live_account = \
                 strategy.threaded_websocket_manager\
                     .start_futures_multiplex_socket(
@@ -384,6 +385,9 @@ class User(Client, Strategy):
                 strategy.telegram_bot.send_message_to_channel(message)
 
             strategy.telegram_bot.send_message_to_channel(msg)
+            
+        else:
+            print(msg)
 
     def _combine_data(strategy):
         """Add last websocket data to main data"""
@@ -523,7 +527,7 @@ class User(Client, Strategy):
                                 f"\nComment: {comment}"
                             strategy.telegram_bot.send_image_to_channel(
                                 plot, caption=caption)
-                        print(caption)
+
                         strategy._open_positions.append(trade)
                     except BinanceAPIException as e:
                         if strategy.telegram_bot:
@@ -533,7 +537,7 @@ class User(Client, Strategy):
                                 f"\nEntry Price: {current_candle['close']}"\
                                 f"\nError: {e}"
                             strategy.telegram_bot.send_message_to_channel(msg)
-                        print(msg)
+
 
     def _permission_entry(strategy, **kwargs):
         """Check if the user has permission to open a position"""
@@ -640,7 +644,6 @@ class User(Client, Strategy):
                             strategy.telegram_bot.send_image_to_channel(
                                 plot, caption=caption)
 
-                        print(caption)
                         strategy._open_positions.remove(position)
                         strategy._closed_positions.append(position)
                     except BinanceAPIException as e:
@@ -652,7 +655,7 @@ class User(Client, Strategy):
                                 f"Exit Price: {current_candle['close']}\n"\
                                 f"Error: {e}"
                             strategy.telegram_bot.send_message_to_channel(msg)
-                        print(msg)
+
 
     def close_positions(strategy):
         """
