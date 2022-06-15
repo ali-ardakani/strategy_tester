@@ -101,20 +101,20 @@ class Manager:
 
     def _help(self, update: Update, context: CallbackContext):
         """Help the user."""
-        update.message.reply_text(text=f"""
-        /start - Start or Restart the user.\n
-        /authorization - Authorization the user.\n
-        /stop_enter_long - stop user enter long.\n
-        /stop_enter_short - stop user enter short.\n
-        /stop_not_close_position - Stop the user and not close the position.\n
-        /stop_close_position - Stop the user and close the position.\n
-        /stop_close_position_with_close_condition -
-         Stop the user and close the position with close condition.\n
-        /status - Get the status of the user.\n
-        /secondary_asset - Get the {self.user.secondary_pair} asset.\n
-        /open_positions - Get the open positions of the user.\n
-        /close_positions - Get the closed positions of the user.\n
-        """)
+        update.message.reply_text(text=\
+        "/start - Start or Restart the user.\n"\
+        "/authorization - Authorization the user.\n"\
+        "/stop_enter_long - stop user enter long.\n"\
+        "/stop_enter_short - stop user enter short.\n"\
+        "/stop_not_close_position - Stop the user and not close the position.\n"\
+        "/stop_close_position - Stop the user and close the position.\n"\
+        "/stop_close_position_with_close_condition -"\
+         "Stop the user and close the position with close condition.\n"
+        "/status - Get the status of the user.\n"\
+        f"/secondary_asset - Get the {self.user.secondary_pair} asset.\n"\
+        "/open_positions - Get the open positions of the user.\n"\
+        "/close_positions - Get the closed positions of the user.\n"\
+        )
 
     def _start(self,
                update: Update,

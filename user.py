@@ -154,8 +154,6 @@ class User(Client, Strategy):
     @staticmethod
     @validate_float
     def _validate_custom_amount_cash(custom_amount_cash):
-        print("value: ", custom_amount_cash)
-        print("type: ", type(custom_amount_cash))
         if custom_amount_cash < 0:
             raise ValueError("The custom amount cash must be greater than 0.")
         else:
@@ -542,21 +540,27 @@ class User(Client, Strategy):
         if strategy._entry:
             side = kwargs["direction"]
             if strategy._permission_long and side == "long":
-                strategy.entry(**kwargs)
+                return True
             elif side == "long":
                 # Send message to Telegram
                 if strategy.telegram_bot:
                     msg = "You don't have permission to open a long position"\
                         " so strategy passed"
                     strategy.telegram_bot.send_message_to_channel(msg)
+                return False
             elif strategy._permission_short and side == "short":
-                strategy.entry(**kwargs)
+                return True
             elif side == "short":
                 # Send message to Telegram
                 if strategy.telegram_bot:
                     msg = "You don't have permission to open a short position"\
                         " so strategy passed"
                     strategy.telegram_bot.send_message_to_channel(msg)
+                return False
+            else:
+                return False
+        else:
+            return False
 
     def exit(strategy,
              from_entry: str,
