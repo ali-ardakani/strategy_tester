@@ -135,6 +135,7 @@ class Manager:
     def _stop_enter_long(self, update: Update, context: CallbackContext, permission_code: bool = False):
         """Stop the user enter long."""
         self._permission(update, context, self._stop_enter_long)
+        print("stop enter long")
         if permission_code:
             self.user._permission_long = False
             update.message.reply_text(text="User is stop enter long.")
@@ -222,24 +223,16 @@ class Manager:
         try:
             open_positions = self.user.open_positions
             usdt_asset = self.user.free_secondary
-            if open_positions:
-                text = f"User is running.\n"\
-                    f"Open positions: {open_positions}\n"\
-                    f"USDT asset: {usdt_asset}\n"\
-                    f"Permission to entry: {self.user._entry}\n"\
-                    f"Permission to exit: {self.user._exit}\n"\
-                    f"Leverage: {self.user.leverage}\n"\
-                    f"Margin Type: {self.user.margin_type}"
-                update.message.reply_text(text=text)
-            else:
-                text = f"User is running.\n"\
-                    f"Open positions: {open_positions}\n"\
-                    f"USDT asset: {usdt_asset}\n"\
-                    f"Permission to entry: {self.user._entry}\n"\
-                    f"Permission to exit: {self.user._exit}\n"\
-                    f"Leverage: {self.user.leverage}\n"\
-                    f"Margin Type: {self.user.margin_type}"
-                update.message.reply_text(text=text)
+            text = f"User is running.\n"\
+                f"Open positions: {open_positions}\n"\
+                f"USDT asset: {usdt_asset}\n"\
+                f"Permission to entry: {self.user._entry}\n"\
+                f"Permission to exit: {self.user._exit}\n"\
+                f"Permission to enter long: {self.user._permission_long}\n"\
+                f"Permission to enter short: {self.user._permission_short}\n"\
+                f"Leverage: {self.user.leverage}\n"\
+                f"Margin Type: {self.user.margin_type}"
+            update.message.reply_text(text=text)
         except Exception as e:
             text = "User is not running. "\
                 "if you want to start the user, please type /start"

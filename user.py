@@ -225,17 +225,17 @@ class User(Client, Strategy):
                 strategy.interval)
 
         # Run stream live account
-        try:
-            strategy.listen_key = strategy.futures_stream_get_listen_key()
-            print(strategy.listen_key)
-            strategy.stream_live_account = \
-                strategy.threaded_websocket_manager\
-                    .start_futures_multiplex_socket(
-                        callback=strategy.__stream_live_account,
-                        streams=[strategy.listen_key],
-                    )
-        except Exception as e:
-            strategy._send_error_message(e)
+        # try:
+        #     strategy.listen_key = strategy.futures_stream_get_listen_key()
+        #     print(strategy.listen_key)
+        #     strategy.stream_live_account = \
+        #         strategy.threaded_websocket_manager\
+        #             .start_futures_multiplex_socket(
+        #                 callback=strategy.__stream_live_account,
+        #                 streams=[strategy.listen_key],
+        #             )
+        # except Exception as e:
+        #     strategy._send_error_message(e)
 
         # Get remind kline data
         data = strategy._get_remind_kline(data)
