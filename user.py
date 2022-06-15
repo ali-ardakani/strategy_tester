@@ -154,6 +154,8 @@ class User(Client, Strategy):
     @staticmethod
     @validate_float
     def _validate_custom_amount_cash(custom_amount_cash):
+        print("value: ", custom_amount_cash)
+        print("type: ", type(custom_amount_cash))
         if custom_amount_cash < 0:
             raise ValueError("The custom amount cash must be greater than 0.")
         else:
