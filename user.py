@@ -70,10 +70,11 @@ class User(Client, Strategy):
         strategy.data = strategy._validate_data(data)
 
         strategy.counter__ = 0
-        
+
     @property
     def hlcc4(strategy):
-        strategy._hlcc4 = (strategy.high + strategy.low + strategy.close + strategy.close)/4
+        hlcc = strategy.high + strategy.low + strategy.close + strategy.close
+        strategy._hlcc4 = hlcc/4
         return strategy._hlcc4
 
     @property
@@ -205,11 +206,171 @@ class User(Client, Strategy):
                 strategy._human_readable_kline,
                 strategy.symbol,
                 strategy.interval)
+
         # Get remind kline data
         data = strategy._get_remind_kline(data)
         print(len(data))
 
         return data
+
+    def _stream_live_account(strategy):
+        """
+        Stream live account data
+        """
+        # Run stream live account
+        try:
+            listen_key = strategy.futures_stream_get_listen_key()
+            strategy.stream_live_account = \
+                strategy.threaded_websocket_manager\
+                    .start_futures_multiplex_socket(
+                        callback=strategy.__stream_live_account,
+                        streams=[listen_key],
+                    )
+        except Exception as e:
+            strategy._send_error_message(e)
+
+    def __stream_live_account(strategy, msg: dict):
+        """
+        Get stream live account
+
+        Description
+        -----------
+            Send all possible changes if any.
+        """
+
+        if msg["e"] == "listenKeyExpired":
+            # Get new listen key and restart stream live account
+            strategy._stream_live_account()
+        elif msg["e"] == "MARGIN_CALL":
+            # Convert int time to datetime
+            event_time = pd.to_datetime(msg["E"], unit="ms")
+            for position in msg["p"]:
+                symbol = position["s"]
+                side = position["ps"]
+                contract = position["pa"]
+                margin_type = position["mt"]
+                # Isolated Wallet(If isolated position)
+                isolated_wallet = position["iw"]
+                mark_price = position["mp"]
+                unrealized_pnl = position["up"]
+                message = f"#MARGIN_CALL\n\n"\
+                    f"Event time: {event_time}\n"\
+                    f"Symbol: {symbol}\n"\
+                    f"Side: {side}\n"\
+                    f"Contract: {contract}\n"\
+                    f"Margin type: {margin_type}\n"\
+                    f"Isolated wallet: {isolated_wallet}\n"\
+                    f"Mark price: {mark_price}\n"\
+                    f"Unrealized PNL: {unrealized_pnl}\n"
+
+                # Send message to channel
+                strategy.telegram_bot.send_message_to_channel(message)
+
+        elif msg["e"] == "ACCOUNT_UPDATE":
+            event_time = pd.to_datetime(msg["E"], unit="ms")
+            transaction_time = pd.to_datetime(msg["T"], unit="ms")
+            for update in msg["a"]:
+                event_reason_type = update["m"]
+                for balance in update["B"]:
+                    asset = balance["a"]
+                    wallet_balance = balance["wb"]
+                    cross_wallet_balance = balance["cwb"]
+                    balance_change = balance["c"]
+                    message = f"#ACCOUNT_UPDATE\n\n"\
+                        f"Event time: {event_time}\n"\
+                        f"Transaction time: {transaction_time}\n"\
+                        f"Event reason type: {event_reason_type}\n"\
+                        f"Asset: {asset}\n"\
+                        f"Wallet balance: {wallet_balance}\n"\
+                        f"Cross wallet balance: {cross_wallet_balance}\n"\
+                        f"Balance change: {balance_change}\n"
+
+                    # Send message to channel
+                    strategy.telegram_bot.send_message_to_channel(message)
+                for position in update["P"]:
+                    symbol = position["s"]
+                    contract = position["pa"]
+                    enter_price = position["ep"]
+                    unrealized_pnl = position["up"]
+                    margin_type = position["mt"]
+                    isolated_wallet = position["iw"]
+                    mark_price = position["mp"]
+                    message = f"#ACCOUNT_UPDATE\n\n"\
+                        f"Event time: {event_time}\n"\
+                        f"Symbol: {symbol}\n"\
+                        f"Contract: {contract}\n"\
+                        f"Enter price: {enter_price}\n"\
+                        f"Unrealized PNL: {unrealized_pnl}\n"\
+                        f"Margin type: {margin_type}\n"\
+                        f"Isolated wallet: {isolated_wallet}\n"\
+                        f"Mark price: {mark_price}\n"
+
+                    # Send message to channel
+                    strategy.telegram_bot.send_message_to_channel(message)
+
+        elif msg["e"] == "ORDER_TRADE_UPDATE":
+            event_time = pd.to_datetime(msg["E"], unit="ms")
+            transaction_time = pd.to_datetime(msg["T"], unit="ms")
+            for order in msg["o"]:
+                symbol = order["s"]
+                client_order_id = order["c"]
+                side = order["S"]
+                position_side = order["ps"]
+                order_type = order["o"]
+                time_in_force = order["f"]
+                original_quantity = order["q"]
+                original_price = order["p"]
+                average_price = order["ap"]
+                stop_price = order["sp"]
+                execution_type = order["x"]
+                order_status = order["X"]
+                order_id = order["i"]
+                order_last_filled_qty = order["l"]
+                order_filled_accumulated_quantity = order["z"]
+                last_filled_price = order["L"]
+                commission_asset = order["N"]
+                commission = order["n"]
+                order_trade_time = pd.to_datetime(order["T"], unit="ms")
+                trade_id = order["t"]
+                bids_notional = order["b"]
+                ask_notional = order["a"]
+                maker_side = order["m"]
+                reduce_only = order["R"]
+                realized_profit = order["rp"]
+                message = f"#ORDER_TRADE_UPDATE\n\n"\
+                    f"Event time: {event_time}\n"\
+                    f"Transaction time: {transaction_time}\n"\
+                    f"Symbol: {symbol}\n"\
+                    f"Client order id: {client_order_id}\n"\
+                    f"Side: {side}\n"\
+                    f"Position side: {position_side}\n"\
+                    f"Order type: {order_type}\n"\
+                    f"Time in force: {time_in_force}\n"\
+                    f"Original quantity: {original_quantity}\n"\
+                    f"Original price: {original_price}\n"\
+                    f"Average price: {average_price}\n"\
+                    f"Stop price: {stop_price}\n"\
+                    f"Execution type: {execution_type}\n"\
+                    f"Order status: {order_status}\n"\
+                    f"Order id: {order_id}\n"\
+                    f"Order last filled quantity: {order_last_filled_qty}\n"\
+                    f"Order filled accumulated quantity: "\
+                    f"{order_filled_accumulated_quantity}\n"\
+                    f"Last filled price: {last_filled_price}\n"\
+                    f"Commission asset: {commission_asset}\n"\
+                    f"Commission: {commission}\n"\
+                    f"Order trade time: {order_trade_time}\n"\
+                    f"Trade id: {trade_id}\n"\
+                    f"Bids notional: {bids_notional}\n"\
+                    f"Ask notional: {ask_notional}\n"\
+                    f"Maker side: {maker_side}\n"\
+                    f"Reduce only: {reduce_only}\n"\
+                    f"Realized profit: {realized_profit}\n"
+
+                # Send message to channel
+                strategy.telegram_bot.send_message_to_channel(message)
+
+            strategy.telegram_bot.send_message_to_channel(msg)
 
     def _combine_data(strategy):
         """Add last websocket data to main data"""
@@ -252,30 +413,30 @@ class User(Client, Strategy):
             strategy.close = strategy.data.close
             strategy.volume = strategy.data.volume
             if strategy.start_trade:
-                # try:
-                strategy._init_indicator()
-                # except Exception as e:
-                    # strategy._send_error_message(e)
-                    
-                # try:
-                strategy.indicators()
-                # except Exception as e:
-                    # strategy._send_error_message(e)
-                    
-                # try:
-                strategy.start()
-                # except Exception as e:
-                    # strategy._send_error_message(e)
-                
-                # try:
-                strategy.condition()
-                # except Exception as e:
-                    # strategy._send_error_message(e)
-                
-                # try:
-                strategy.conditions.apply(strategy.trade, axis=1)
-                # except Exception as e:
-                    # strategy._send_error_message(e)
+                try:
+                    strategy._init_indicator()
+                except Exception as e:
+                    strategy._send_error_message(e)
+
+                try:
+                    strategy.indicators()
+                except Exception as e:
+                    strategy._send_error_message(e)
+
+                try:
+                    strategy.start()
+                except Exception as e:
+                    strategy._send_error_message(e)
+
+                try:
+                    strategy.condition()
+                except Exception as e:
+                    strategy._send_error_message(e)
+
+                try:
+                    strategy.conditions.apply(strategy.trade, axis=1)
+                except Exception as e:
+                    strategy._send_error_message(e)
 
     def entry(strategy,
               signal: str,
@@ -515,7 +676,7 @@ class User(Client, Strategy):
         if type_ == "candle":
             entry_color = "blue"
             exit_color = "blue"
-            y_entry= candles.close.loc[0]
+            y_entry = candles.close.loc[0]
             y_exit = candles.close.loc[-1]
         elif type_ == "long":
             entry_color = "green"
@@ -543,7 +704,7 @@ class User(Client, Strategy):
                                  y=[y_entry],
                                  mode="markers",
                                  marker=dict(color=entry_color, size=10))
-            
+
         if show_exit:
             exit_arrow = go.Scatter(x=[candle_exit.date],
                                     y=[y_exit],
@@ -661,5 +822,5 @@ class User(Client, Strategy):
             strategy.start_trade = False
             strategy._entry = False
             strategy._exit = False
-            strategy.telegram_bot.send_message_to_channel(str(err)+"\n"+ "User is down!!")
-            
+            msg = str(err) + "\n" + "User is down!!"
+            strategy.telegram_bot.send_message_to_channel(msg)
