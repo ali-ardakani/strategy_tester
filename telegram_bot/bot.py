@@ -132,19 +132,21 @@ class Manager:
             self.send_message_to_channel("Strategy is started!")
             update.message.reply_text(text="User is running.")
 
-    def _stop_enter_long(self, update: Update, context: CallbackContext):
+    def _stop_enter_long(self, update: Update, context: CallbackContext, permission_code: bool = False):
         """Stop the user enter long."""
         self._permission(update, context, self._stop_enter_long)
-        self.user._permission_long = False
-        update.message.reply_text(text="User is stop enter long.")
-        self.send_message_to_channel("User stop enter long.")
+        if permission_code:
+            self.user._permission_long = False
+            update.message.reply_text(text="User is stop enter long.")
+            self.send_message_to_channel("User stop enter long.")
 
-    def _stop_enter_short(self, update: Update, context: CallbackContext):
+    def _stop_enter_short(self, update: Update, context: CallbackContext, permission_code: bool = False):
         """Stop the user enter short."""
         self._permission(update, context, self._stop_enter_short)
-        self.user._permission_short = False
-        update.message.reply_text(text="User is stop enter short.")
-        self.send_message_to_channel("User stop enter short.")
+        if permission_code:
+            self.user._permission_short = False
+            update.message.reply_text(text="User is stop enter short.")
+            self.send_message_to_channel("User stop enter short.")
 
     def _stop_not_close_position(self,
                                  update: Update,
