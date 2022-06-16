@@ -219,28 +219,30 @@ class User(Client, Strategy):
                 data['close_time'] = data['close_time'].astype(
                     np.int64) / 10**6
 
-        strategy.stream = \
-            strategy.threaded_websocket_manager.start_kline_socket(
-                strategy._human_readable_kline,
-                strategy.symbol,
-                strategy.interval)
-
-        # Run stream live account
-        # try:
-        #     strategy.listen_key = strategy.futures_stream_get_listen_key()
-        #     print(strategy.listen_key)
-        #     strategy.stream_live_account = \
-        #         strategy.threaded_websocket_manager\
-        #             .start_futures_multiplex_socket(
-        #                 callback=strategy.__stream_live_account,
-        #                 streams=[strategy.listen_key],
-        #             )
-        # except Exception as e:
-        #     strategy._send_error_message(e)
-
         # Get remind kline data
         data = strategy._get_remind_kline(data)
         print(len(data))
+        
+        # <symbol>@kline_<interval>
+        # strategy.stream = \
+        #     strategy.threaded_websocket_manager.start_kline_socket(
+        #         strategy._human_readable_kline,
+        #         strategy.symbol,
+        #         strategy.interval)
+
+        # Run stream live account
+        try:
+            strategy.listen_key = strategy.futures_stream_get_listen_key()
+            strategy.stream = strategy.symbol.lower() + "@kline_" + \
+                strategy.interval
+            strategy.stream_live_account = \
+                strategy.threaded_websocket_manager\
+                    .start_futures_multiplex_socket(
+                        callback=strategy.__stream_live_account,
+                        streams=[strategy.listen_key, strategy.stream],
+                    )
+        except Exception as e:
+            strategy._send_error_message(e)
 
         return data
 
@@ -252,22 +254,23 @@ class User(Client, Strategy):
         -----------
             Send all possible changes if any.
         """
-
-        if msg["e"] == "listenKeyExpired":
+        if msg["stream"] == strategy.stream:
+            strategy._human_readable_kline(msg["data"])
+        elif msg["data"]["e"] == "listenKeyExpired":
             # Get new listen key and restart stream live account
             strategy.futures_stream_keepalive(strategy.listen_key)
-        elif msg["e"] == "MARGIN_CALL":
+        elif msg["data"]["e"] == "MARGIN_CALL":
             # Convert int time to datetime
-            event_time = pd.to_datetime(msg["E"], unit="ms")
-            for position in msg["p"]:
-                symbol = position["s"]
-                side = position["ps"]
-                contract = position["pa"]
-                margin_type = position["mt"]
+            event_time = pd.to_datetime(msg["data"]["E"], unit="ms")
+            for position in msg["data"]["p"]:
+                symbol = position.get("s", None)
+                side = position.get("ps", None)
+                contract = position.get("pa", None)
+                margin_type = position.get("mt", None)
                 # Isolated Wallet(If isolated position)
-                isolated_wallet = position["iw"]
-                mark_price = position["mp"]
-                unrealized_pnl = position["up"]
+                isolated_wallet = position.get("iw", None)
+                mark_price = position.get("mp", None)
+                unrealized_pnl = position.get("up", None)
                 message = f"#MARGIN_CALL\n\n"\
                     f"Event time: {event_time}\n"\
                     f"Symbol: {symbol}\n"\
@@ -281,113 +284,114 @@ class User(Client, Strategy):
                 # Send message to channel
                 strategy._send_message(message)
 
-        elif msg["e"] == "ACCOUNT_UPDATE":
-            event_time = pd.to_datetime(msg["E"], unit="ms")
-            transaction_time = pd.to_datetime(msg["T"], unit="ms")
-            for update in msg["a"]:
-                event_reason_type = update["m"]
-                for balance in update["B"]:
-                    asset = balance["a"]
-                    wallet_balance = balance["wb"]
-                    cross_wallet_balance = balance["cwb"]
-                    balance_change = balance["c"]
-                    message = f"#ACCOUNT_UPDATE\n\n"\
-                        f"Event time: {event_time}\n"\
-                        f"Transaction time: {transaction_time}\n"\
-                        f"Event reason type: {event_reason_type}\n"\
-                        f"Asset: {asset}\n"\
-                        f"Wallet balance: {wallet_balance}\n"\
-                        f"Cross wallet balance: {cross_wallet_balance}\n"\
-                        f"Balance change: {balance_change}\n"
-
-                    # Send message to channel
-                    strategy._send_message(message)
-                for position in update["P"]:
-                    symbol = position["s"]
-                    contract = position["pa"]
-                    enter_price = position["ep"]
-                    unrealized_pnl = position["up"]
-                    margin_type = position["mt"]
-                    isolated_wallet = position["iw"]
-                    mark_price = position["mp"]
-                    message = f"#ACCOUNT_UPDATE\n\n"\
-                        f"Event time: {event_time}\n"\
-                        f"Symbol: {symbol}\n"\
-                        f"Contract: {contract}\n"\
-                        f"Enter price: {enter_price}\n"\
-                        f"Unrealized PNL: {unrealized_pnl}\n"\
-                        f"Margin type: {margin_type}\n"\
-                        f"Isolated wallet: {isolated_wallet}\n"\
-                        f"Mark price: {mark_price}\n"
-
-                    # Send message to channel
-                    strategy._send_message(message)
-
-        elif msg["e"] == "ORDER_TRADE_UPDATE":
-            event_time = pd.to_datetime(msg["E"], unit="ms")
-            transaction_time = pd.to_datetime(msg["T"], unit="ms")
-            for order in msg["o"]:
-                symbol = order["s"]
-                client_order_id = order["c"]
-                side = order["S"]
-                position_side = order["ps"]
-                order_type = order["o"]
-                time_in_force = order["f"]
-                original_quantity = order["q"]
-                original_price = order["p"]
-                average_price = order["ap"]
-                stop_price = order["sp"]
-                execution_type = order["x"]
-                order_status = order["X"]
-                order_id = order["i"]
-                order_last_filled_qty = order["l"]
-                order_filled_accumulated_quantity = order["z"]
-                last_filled_price = order["L"]
-                commission_asset = order["N"]
-                commission = order["n"]
-                order_trade_time = pd.to_datetime(order["T"], unit="ms")
-                trade_id = order["t"]
-                bids_notional = order["b"]
-                ask_notional = order["a"]
-                maker_side = order["m"]
-                reduce_only = order["R"]
-                realized_profit = order["rp"]
-                message = f"#ORDER_TRADE_UPDATE\n\n"\
+        elif msg["data"]["e"] == "ACCOUNT_UPDATE":
+            event_time = pd.to_datetime(msg["data"]["E"], unit="ms")
+            transaction_time = pd.to_datetime(msg["data"]["T"], unit="ms")
+            update = msg["data"]["a"]
+            event_reason_type = update["m"]
+            for balance in update["B"]:
+                asset = balance.get("a", None)
+                wallet_balance = balance.get("wb", None)
+                cross_wallet_balance = balance.get("cwb", None)
+                balance_change = balance.get("c", None)
+                message = f"#ACCOUNT_UPDATE\n\n"\
                     f"Event time: {event_time}\n"\
                     f"Transaction time: {transaction_time}\n"\
+                    f"Event reason type: {event_reason_type}\n"\
+                    f"Asset: {asset}\n"\
+                    f"Wallet balance: {wallet_balance}\n"\
+                    f"Cross wallet balance: {cross_wallet_balance}\n"\
+                    f"Balance change: {balance_change}\n"
+
+                # Send message to channel
+                strategy._send_message(message)
+            for position in update["P"]:
+                symbol = position.get("s", None)
+                contract = position.get("pa", None)
+                enter_price = position.get("ep", None)
+                unrealized_pnl = position.get("up", None)
+                margin_type = position.get("mt", None)
+                isolated_wallet = position.get("iw", None)
+                mark_price = position.get("mp", None)
+                message = f"#ACCOUNT_UPDATE\n\n"\
+                    f"Event time: {event_time}\n"\
                     f"Symbol: {symbol}\n"\
-                    f"Client order id: {client_order_id}\n"\
-                    f"Side: {side}\n"\
-                    f"Position side: {position_side}\n"\
-                    f"Order type: {order_type}\n"\
-                    f"Time in force: {time_in_force}\n"\
-                    f"Original quantity: {original_quantity}\n"\
-                    f"Original price: {original_price}\n"\
-                    f"Average price: {average_price}\n"\
-                    f"Stop price: {stop_price}\n"\
-                    f"Execution type: {execution_type}\n"\
-                    f"Order status: {order_status}\n"\
-                    f"Order id: {order_id}\n"\
-                    f"Order last filled quantity: {order_last_filled_qty}\n"\
-                    f"Order filled accumulated quantity: "\
-                    f"{order_filled_accumulated_quantity}\n"\
-                    f"Last filled price: {last_filled_price}\n"\
-                    f"Commission asset: {commission_asset}\n"\
-                    f"Commission: {commission}\n"\
-                    f"Order trade time: {order_trade_time}\n"\
-                    f"Trade id: {trade_id}\n"\
-                    f"Bids notional: {bids_notional}\n"\
-                    f"Ask notional: {ask_notional}\n"\
-                    f"Maker side: {maker_side}\n"\
-                    f"Reduce only: {reduce_only}\n"\
-                    f"Realized profit: {realized_profit}\n"
+                    f"Contract: {contract}\n"\
+                    f"Enter price: {enter_price}\n"\
+                    f"Unrealized PNL: {unrealized_pnl}\n"\
+                    f"Margin type: {margin_type}\n"\
+                    f"Isolated wallet: {isolated_wallet}\n"\
+                    f"Mark price: {mark_price}\n"
 
                 # Send message to channel
                 strategy._send_message(message)
 
-            strategy._send_message(msg)
+        elif msg["data"]["e"] == "ORDER_TRADE_UPDATE":
+            event_time = pd.to_datetime(msg["data"]["E"], unit="ms")
+            transaction_time = pd.to_datetime(msg["data"]["T"], unit="ms")
+            order = msg["data"]["o"]
+            symbol = order.get("s", None)
+            client_order_id = order.get("c", None)
+            side = order.get("S", None)
+            position_side = order.get("ps", None)
+            order_type = order.get("o", None)
+            time_in_force = order.get("f", None)
+            original_quantity = order.get("q", None)
+            original_price = order.get("p", None)
+            average_price = order.get("ap", None)
+            stop_price = order.get("sp", None)
+            execution_type = order.get("x", None)
+            order_status = order.get("X", None)
+            order_id = order.get("i", None)
+            order_last_filled_qty = order.get("l", None)
+            order_filled_accumulated_quantity = order.get("z", None)
+            last_filled_price = order.get("L", None)
+            commission_asset = order.get("N", None)
+            commission = order.get("n", None)
+            order_trade_time = pd.to_datetime(order.get("T", None), unit="ms")
+            trade_id = order.get("t", None)
+            bids_notional = order.get("b", None)
+            ask_notional = order.get("a", None)
+            maker_side = order.get("m", None)
+            reduce_only = order.get("R", None)
+            realized_profit = order.get("rp", None)
+            message = f"#ORDER_TRADE_UPDATE\n\n"\
+                f"Event time: {event_time}\n"\
+                f"Transaction time: {transaction_time}\n"\
+                f"Symbol: {symbol}\n"\
+                f"Client order id: {client_order_id}\n"\
+                f"Side: {side}\n"\
+                f"Position side: {position_side}\n"\
+                f"Order type: {order_type}\n"\
+                f"Time in force: {time_in_force}\n"\
+                f"Original quantity: {original_quantity}\n"\
+                f"Original price: {original_price}\n"\
+                f"Average price: {average_price}\n"\
+                f"Stop price: {stop_price}\n"\
+                f"Execution type: {execution_type}\n"\
+                f"Order status: {order_status}\n"\
+                f"Order id: {order_id}\n"\
+                f"Order last filled quantity: {order_last_filled_qty}\n"\
+                f"Order filled accumulated quantity: "\
+                f"{order_filled_accumulated_quantity}\n"\
+                f"Last filled price: {last_filled_price}\n"\
+                f"Commission asset: {commission_asset}\n"\
+                f"Commission: {commission}\n"\
+                f"Order trade time: {order_trade_time}\n"\
+                f"Trade id: {trade_id}\n"\
+                f"Bids notional: {bids_notional}\n"\
+                f"Ask notional: {ask_notional}\n"\
+                f"Maker side: {maker_side}\n"\
+                f"Reduce only: {reduce_only}\n"\
+                f"Realized profit: {realized_profit}\n"
+
+            # Send message to channel
+            strategy._send_message(message)
+
+            strategy._send_message(msg["data"])
 
         else:
+            print(strategy.stream)
             print(msg)
 
     def _combine_data(strategy):
@@ -501,12 +505,12 @@ class User(Client, Strategy):
                     side = "SELL"
 
                 try:
-                    # strategy.futures_create_order(
-                    #     symbol=strategy.symbol,
-                    #     side=side,
-                    #     type='MARKET',
-                    #     quantity=quantity,
-                    #     newOrderRespType='RESULT')
+                    strategy.futures_create_order(
+                        symbol=strategy.symbol,
+                        side=side,
+                        type='MARKET',
+                        quantity=quantity,
+                        newOrderRespType='RESULT')
 
                     trade = Trade(type=direction,
                                   entry_date=strategy._prepare_time(
@@ -616,13 +620,13 @@ class User(Client, Strategy):
                                 position.entry_date,
                                 current_candle.close_time + 1)]
                         quantity = position.contract * qty
-                        # strategy.futures_create_order(
-                        #     symbol=strategy.symbol,
-                        #     side=side,
-                        #     type='MARKET',
-                        #     quantity=quantity,
-                        #     newOrderRespType='RESULT',
-                        #     reduceOnly=reduceOnly)
+                        strategy.futures_create_order(
+                            symbol=strategy.symbol,
+                            side=side,
+                            type='MARKET',
+                            quantity=quantity,
+                            newOrderRespType='RESULT',
+                            reduceOnly=reduceOnly)
                         position.exit_date = strategy._prepare_time(
                             current_candle.close_time)
                         position.exit_price = current_candle.close
