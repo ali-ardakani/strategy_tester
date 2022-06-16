@@ -488,59 +488,59 @@ class User(Client, Strategy):
                                       stop=stop,
                                       comment=comment,
                                       current_candle=current_candle):
+            # If there is no open position,
+            # then open position
+            # (Only used for having 1 open position at the same time)
+            if strategy.open_positions == []:
+                quantity = float(
+                    str(strategy.free_secondary * percent_of_assets * 0.997 /
+                        current_candle["close"])[:5])
+                if direction == "long":
+                    side = "BUY"
+                elif direction == "short":
+                    side = "SELL"
 
-            if strategy.start_trade and strategy.data.date.iloc[
-                    -1] == current_candle["date"]:
-                # If there is no open position,
-                # then open position
-                # (Only used for having 1 open position at the same time)
-                if strategy.open_positions == []:
-                    quantity = float(
-                        str(strategy.free_secondary * percent_of_assets *
-                            0.997 / current_candle["close"])[:5])
-                    if direction == "long":
-                        side = "BUY"
-                    elif direction == "short":
-                        side = "SELL"
+                try:
+                    # strategy.futures_create_order(
+                    #     symbol=strategy.symbol,
+                    #     side=side,
+                    #     type='MARKET',
+                    #     quantity=quantity,
+                    #     newOrderRespType='RESULT')
 
-                    try:
-                        # strategy.futures_create_order(
-                        #     symbol=strategy.symbol,
-                        #     side=side,
-                        #     type='MARKET',
-                        #     quantity=quantity,
-                        #     newOrderRespType='RESULT')
+                    trade = Trade(type=direction,
+                                  entry_date=strategy._prepare_time(
+                                      current_candle.close_time),
+                                  entry_price=current_candle.close,
+                                  entry_signal=signal,
+                                  contract=quantity,
+                                  comment=comment)
 
-                        trade = Trade(type=direction,
-                                      entry_date=strategy._prepare_time(
-                                          current_candle.close_time),
-                                      entry_price=current_candle.close,
-                                      entry_signal=signal,
-                                      contract=quantity,
-                                      comment=comment)
+                    close_time = current_candle.close_time
+                    plot = strategy._plot_to_channel(trade)
+                    caption = f"#Open#{direction}#{signal}\n\n\n"\
+                        f"Open {direction} in"\
+                        f"{strategy._round_time(close_time)}"\
+                        f"\n\nOpen Price: {current_candle.close}"\
+                        f"\nContract: {quantity}"\
+                        f"\nComment: {comment}"
+                    strategy._send_image(plot, caption=caption)
 
-                        close_time = current_candle.close_time
-                        plot = strategy._plot_to_channel(trade)
-                        caption = f"#Open#{direction}#{signal}\n\n\n"\
-                            f"Open {direction} in"\
-                            f"{strategy._round_time(close_time)}"\
-                            f"\n\nOpen Price: {current_candle.close}"\
-                            f"\nContract: {quantity}"\
-                            f"\nComment: {comment}"
-                        strategy._send_image(plot, caption=caption)
-
-                        strategy._open_positions.append(trade)
-                    except BinanceAPIException as e:
-                        msg = "Error in Open Position\n"\
-                            f"\nSymbol: {strategy.symbol}"\
-                            f"\nSide: {side}\nQuantity: {quantity}"\
-                            f"\nEntry Price: {current_candle['close']}"\
-                            f"\nError: {e}"
-                        strategy._send_message(msg)
+                    strategy._open_positions.append(trade)
+                except BinanceAPIException as e:
+                    msg = "Error in Open Position\n"\
+                        f"\nSymbol: {strategy.symbol}"\
+                        f"\nSide: {side}\nQuantity: {quantity}"\
+                        f"\nEntry Price: {current_candle['close']}"\
+                        f"\nError: {e}"
+                    strategy._send_message(msg)
 
     def _permission_entry(strategy, **kwargs):
         """Check if the user has permission to open a position"""
-        if strategy._entry:
+        if strategy._entry and \
+            strategy.start_trade and \
+            strategy.data.date.iloc[
+                -1] == kwargs["current_candle"]["date"]:
             side = kwargs["direction"]
             entry_date = strategy._round_time(
                 kwargs["current_candle"].close_time)
