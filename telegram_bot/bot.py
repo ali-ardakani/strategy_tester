@@ -79,9 +79,9 @@ class Manager:
         self.updater.dispatcher.add_handler(
             CommandHandler("stop_entry_long", self._stop_enter_long))
         self.updater.dispatcher.add_handler(
-            CommandHandler("start_entry_long", self._start_enter_long))
+            CommandHandler("start_entry_long", self._start_entry_long))
         self.updater.dispatcher.add_handler(
-            CommandHandler("start_entry_short", self._start_enter_short))
+            CommandHandler("start_entry_short", self._start_entry_short))
         self.updater.dispatcher.add_handler(
             CommandHandler("stop_entry_short", self._stop_enter_short))
         self.updater.dispatcher.add_handler(
