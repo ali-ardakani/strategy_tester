@@ -54,7 +54,8 @@ class User(Client, Strategy):
         if strategy.open_positions != []:
             msg = f"{strategy.primary_pair}{strategy.secondary_pair}"\
                 " has open positions."
-            strategy.telegram_bot.send_message_to_channel(msg)
+            strategy._send_message(msg)
+
         strategy.leverage = strategy._set_leverage(leverage)
         strategy.margin_type = strategy._set_margin_type(margin_type)
         strategy.custom_amount_cash = strategy.\
@@ -278,7 +279,7 @@ class User(Client, Strategy):
                     f"Unrealized PNL: {unrealized_pnl}\n"
 
                 # Send message to channel
-                strategy.telegram_bot.send_message_to_channel(message)
+                strategy._send_message(message)
 
         elif msg["e"] == "ACCOUNT_UPDATE":
             event_time = pd.to_datetime(msg["E"], unit="ms")
@@ -300,7 +301,7 @@ class User(Client, Strategy):
                         f"Balance change: {balance_change}\n"
 
                     # Send message to channel
-                    strategy.telegram_bot.send_message_to_channel(message)
+                    strategy._send_message(message)
                 for position in update["P"]:
                     symbol = position["s"]
                     contract = position["pa"]
@@ -320,7 +321,7 @@ class User(Client, Strategy):
                         f"Mark price: {mark_price}\n"
 
                     # Send message to channel
-                    strategy.telegram_bot.send_message_to_channel(message)
+                    strategy._send_message(message)
 
         elif msg["e"] == "ORDER_TRADE_UPDATE":
             event_time = pd.to_datetime(msg["E"], unit="ms")
@@ -382,10 +383,10 @@ class User(Client, Strategy):
                     f"Realized profit: {realized_profit}\n"
 
                 # Send message to channel
-                strategy.telegram_bot.send_message_to_channel(message)
+                strategy._send_message(message)
 
-            strategy.telegram_bot.send_message_to_channel(msg)
-            
+            strategy._send_message(msg)
+
         else:
             print(msg)
 
@@ -479,13 +480,15 @@ class User(Client, Strategy):
         comment : str
             The comment of the position.
         """
+        current_candle = strategy.data.loc[strategy.current_candle]
         if strategy._permission_entry(signal=signal,
                                       direction=direction,
                                       percent_of_assets=percent_of_assets,
                                       limit=limit,
                                       stop=stop,
-                                      comment=comment):
-            current_candle = strategy.data.loc[strategy.current_candle]
+                                      comment=comment,
+                                      current_candle=current_candle):
+
             if strategy.start_trade and strategy.data.date.iloc[
                     -1] == current_candle["date"]:
                 # If there is no open position,
@@ -516,50 +519,52 @@ class User(Client, Strategy):
                                       contract=quantity,
                                       comment=comment)
 
-                        if strategy.telegram_bot:
-                            close_time = current_candle.close_time
-                            plot = strategy._plot_to_channel(trade)
-                            caption = f"#Open#{direction}#{signal}\n\n\n"\
-                                f"Open {direction} in"\
-                                f"{strategy._round_time(close_time)}"\
-                                f"\n\nOpen Price: {current_candle.close}"\
-                                f"\nContract: {quantity}"\
-                                f"\nComment: {comment}"
-                            strategy.telegram_bot.send_image_to_channel(
-                                plot, caption=caption)
+                        close_time = current_candle.close_time
+                        plot = strategy._plot_to_channel(trade)
+                        caption = f"#Open#{direction}#{signal}\n\n\n"\
+                            f"Open {direction} in"\
+                            f"{strategy._round_time(close_time)}"\
+                            f"\n\nOpen Price: {current_candle.close}"\
+                            f"\nContract: {quantity}"\
+                            f"\nComment: {comment}"
+                        strategy._send_image(plot, caption=caption)
 
                         strategy._open_positions.append(trade)
                     except BinanceAPIException as e:
-                        if strategy.telegram_bot:
-                            msg = "Error in Open Position\n"\
-                                f"\nSymbol: {strategy.symbol}"\
-                                f"\nSide: {side}\nQuantity: {quantity}"\
-                                f"\nEntry Price: {current_candle['close']}"\
-                                f"\nError: {e}"
-                            strategy.telegram_bot.send_message_to_channel(msg)
-
+                        msg = "Error in Open Position\n"\
+                            f"\nSymbol: {strategy.symbol}"\
+                            f"\nSide: {side}\nQuantity: {quantity}"\
+                            f"\nEntry Price: {current_candle['close']}"\
+                            f"\nError: {e}"
+                        strategy._send_message(msg)
 
     def _permission_entry(strategy, **kwargs):
         """Check if the user has permission to open a position"""
         if strategy._entry:
             side = kwargs["direction"]
+            entry_date = strategy._round_time(
+                kwargs["current_candle"].close_time)
             if strategy._permission_long and side == "long":
                 return True
             elif side == "long":
                 # Send message to Telegram
-                if strategy.telegram_bot:
-                    msg = "You don't have permission to open a long position"\
-                        " so strategy passed"
-                    strategy.telegram_bot.send_message_to_channel(msg)
+                msg = "Strategy is not allowed to open a long position"\
+                    f"\n\nSymbol: {strategy.symbol}"\
+                    f"\nEntry Date: {entry_date}"\
+                    f"\nEntry Signal: {kwargs['signal']}"\
+                    f"\nComment: {kwargs['comment']}"
+                strategy._send_message(msg)
                 return False
             elif strategy._permission_short and side == "short":
                 return True
             elif side == "short":
                 # Send message to Telegram
-                if strategy.telegram_bot:
-                    msg = "You don't have permission to open a short position"\
-                        " so strategy passed"
-                    strategy.telegram_bot.send_message_to_channel(msg)
+                msg = "Strategy is not allowed to open a short position"\
+                    f"\n\nSymbol: {strategy.symbol}"\
+                    f"\nEntry Date: {entry_date}"\
+                    f"\nEntry Signal: {kwargs['signal']}"\
+                    f"\nComment: {kwargs['comment']}"
+                strategy._send_message(msg)
                 return False
             else:
                 return False
@@ -623,39 +628,35 @@ class User(Client, Strategy):
                         position.exit_price = current_candle.close
                         position.exit_signal = signal
                         CalculatorTrade(position, data_trade)
-                        if strategy.telegram_bot:
-                            close_time = current_candle.close_time
-                            plot = strategy._plot_to_channel(position)
-                            caption = f"#Close#{position.type}#{signal}\n\n\n"\
-                                f"Close {position.type} in "\
-                                f"{strategy._round_time(close_time)}"\
-                                f"\n\nClose Price: {current_candle.close}\n"\
-                                f"Contract: {position.contract}\n"\
-                                f"Comment: {comment}\n"\
-                                f"Profit: {position.profit}\n"\
-                                f"Profit Percent: {position.profit_percent}\n"\
-                                f"Draw Down: {position.draw_down}\n"\
-                                f"Entry Price: {position.entry_price}\n"\
-                                f"Entry Signal: {position.entry_signal}\n"\
-                                f"Entry Date: {position.entry_date}\n\n"\
-                                f"Exit Price: {position.exit_price}\n"\
-                                f"Exit Signal: {position.exit_signal}\n"\
-                                f"Exit Date: {position.exit_date}"
-                            strategy.telegram_bot.send_image_to_channel(
-                                plot, caption=caption)
+                        close_time = current_candle.close_time
+                        plot = strategy._plot_to_channel(position)
+                        caption = f"#Close#{position.type}#{signal}\n\n\n"\
+                            f"Close {position.type} in "\
+                            f"{strategy._round_time(close_time)}"\
+                            f"\n\nClose Price: {current_candle.close}\n"\
+                            f"Contract: {position.contract}\n"\
+                            f"Comment: {comment}\n"\
+                            f"Profit: {position.profit}\n"\
+                            f"Profit Percent: {position.profit_percent}\n"\
+                            f"Draw Down: {position.draw_down}\n"\
+                            f"Entry Price: {position.entry_price}\n"\
+                            f"Entry Signal: {position.entry_signal}\n"\
+                            f"Entry Date: {position.entry_date}\n\n"\
+                            f"Exit Price: {position.exit_price}\n"\
+                            f"Exit Signal: {position.exit_signal}\n"\
+                            f"Exit Date: {position.exit_date}"
+                        strategy._send_image(plot, caption=caption)
 
                         strategy._open_positions.remove(position)
                         strategy._closed_positions.append(position)
                     except BinanceAPIException as e:
-                        if strategy.telegram_bot:
-                            msg = f"Error in Close Position\n\n"\
-                                f"Symbol: {strategy.symbol}\n"\
-                                f"Side: {side}\nQuantity: {quantity}\n "\
-                                f"Entry Price: {position.entry_price}\n "\
-                                f"Exit Price: {current_candle['close']}\n"\
-                                f"Error: {e}"
-                            strategy.telegram_bot.send_message_to_channel(msg)
-
+                        msg = f"Error in Close Position\n\n"\
+                            f"Symbol: {strategy.symbol}\n"\
+                            f"Side: {side}\nQuantity: {quantity}\n "\
+                            f"Entry Price: {position.entry_price}\n "\
+                            f"Exit Price: {current_candle['close']}\n"\
+                            f"Error: {e}"
+                        strategy._send_message(msg)
 
     def close_positions(strategy):
         """
@@ -807,22 +808,18 @@ class User(Client, Strategy):
             The leverage of the strategy.
         """
         if leverage < 1:
-            if strategy.telegram_bot:
-                strategy.telegram_bot.send_message_to_channel(
-                    f"Leverage must be greater than 1.\n\nLeverage: {leverage}"
-                )
+            strategy._send_message(
+                f"Leverage must be greater than 1.\n\nLeverage: {leverage}")
             raise ValueError("Leverage must be greater than 1.")
         try:
             strategy.futures_change_leverage(symbol=strategy.symbol,
                                              leverage=leverage)
-            strategy.telegram_bot.send_message_to_channel(
-                f"Leverage changed to {leverage}")
+            strategy._send_message(f"Leverage changed to {leverage}")
             return leverage
         except BinanceAPIException as e:
-            if strategy.telegram_bot:
-                err = f"Error in Set Leverage\n\n"\
-                    f"Leverage: {leverage}\nError: {e}"
-                strategy.telegram_bot.send_message_to_channel(err)
+            err = f"Error in Set Leverage\n\n"\
+                f"Leverage: {leverage}\nError: {e}"
+            strategy._send_message(err)
             raise e
 
     def _set_margin_type(strategy, margin_type: str):
@@ -835,28 +832,24 @@ class User(Client, Strategy):
         """
         margin_type = margin_type.upper()
         if margin_type not in ["ISOLATED", "CROSSED"]:
-            if strategy.telegram_bot:
-                msg = f"Margin type must be either isolated or crossed.\n\n"\
-                    f"Margin Type: {margin_type}"
-                strategy.telegram_bot.send_message_to_channel(msg)
+            msg = f"Margin type must be either isolated or crossed.\n\n"\
+                f"Margin Type: {margin_type}"
+            strategy._send_message(msg)
             raise ValueError("Margin type must be either isolated or crossed.")
         try:
             strategy.futures_change_margin_type(symbol=strategy.symbol,
                                                 marginType=margin_type)
-            strategy.telegram_bot.send_message_to_channel(
-                f"Margin type changed to {margin_type}")
+            strategy._send_message(f"Margin type changed to {margin_type}")
             return margin_type
         except BinanceAPIException as e:
-            if strategy.telegram_bot:
-                if e.message == "No need to change margin type.":
-                    strategy.telegram_bot.send_message_to_channel(
-                        f"Margin type is already {margin_type}")
-                    return margin_type
-                else:
-                    err = f"Error in Set Margin Type\n\n"\
-                        f"Margin Type: {margin_type}\nError: {e}"
-                    strategy.telegram_bot.send_message_to_channel(err)
-                raise e
+            if e.message == "No need to change margin type.":
+                strategy._send_message(f"Margin type is already {margin_type}")
+                return margin_type
+            else:
+                err = f"Error in Set Margin Type\n\n"\
+                    f"Margin Type: {margin_type}\nError: {e}"
+                strategy._send_message(err)
+            raise e
 
     def _send_error_message(strategy, err: Exception):
         """
@@ -866,9 +859,39 @@ class User(Client, Strategy):
         msg : str
             The error message to send.
         """
+        strategy.start_trade = False
+        strategy._entry = False
+        strategy._exit = False
+        msg = str(err) + "\n" + "User is down!!"
         if strategy.telegram_bot:
-            strategy.start_trade = False
-            strategy._entry = False
-            strategy._exit = False
-            msg = str(err) + "\n" + "User is down!!"
             strategy.telegram_bot.send_message_to_channel(msg)
+        else:
+            print(msg)
+
+    def _send_message(self, msg: str) -> None:
+        """
+        Send a message to the channel.
+        Parameters
+        ----------
+        msg : str
+            The message to send.
+        """
+        if self.telegram_bot:
+            self.telegram_bot.send_message_to_channel(msg)
+        else:
+            print(msg)
+
+    def _send_image(self, img, caption: str = None) -> None:
+        """
+        Send an image to the channel.
+        Parameters
+        ----------
+        img : Image
+            The image to send.
+        caption : str
+            The caption of the image.
+        """
+        if self.telegram_bot:
+            self.telegram_bot.send_image_to_channel(img, caption=caption)
+        else:
+            print(img)

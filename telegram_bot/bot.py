@@ -101,20 +101,21 @@ class Manager:
 
     def _help(self, update: Update, context: CallbackContext):
         """Help the user."""
-        update.message.reply_text(text=\
-        "/start - Start or Restart the user.\n"\
-        "/authorization - Authorization the user.\n"\
-        "/stop_entry_long - stop user enter long.\n"\
-        "/stop_entry_short - stop user enter short.\n"\
-        "/stop_not_close_position - Stop the user and not close the position.\n"\
-        "/stop_close_position - Stop the user and close the position.\n"\
-        "/stop_close_position_with_close_condition -"\
-         "Stop the user and close the position with close condition.\n"
-        "/status - Get the status of the user.\n"\
-        f"/secondary_asset - Get the {self.user.secondary_pair} asset.\n"\
-        "/open_positions - Get the open positions of the user.\n"\
-        "/close_positions - Get the closed positions of the user.\n"\
-        )
+        text = "/start - Start or Restart the user.\n"\
+            "/authorization - Authorization the user.\n"\
+            "/stop_entry_long - stop user enter long.\n"\
+            "/stop_entry_short - stop user enter short.\n"\
+            "/stop_not_close_position - Stop the user"\
+            " and not close the position.\n"\
+            "/stop_close_position - Stop the user and close the position.\n"\
+            "/stop_close_position_with_close_condition -"\
+            "Stop the user and close the position with close condition.\n"\
+            "/status - Get the status of the user.\n"\
+            f"/secondary_asset - Get the {self.user.secondary_pair} asset.\n"\
+            "/open_positions - Get the open positions of the user.\n"\
+            "/close_positions - Get the closed positions of the user.\n"\
+
+        update.message.reply_text(text=text)
 
     def _start(self,
                update: Update,
@@ -129,10 +130,17 @@ class Manager:
             self.user._permission_long = True
             self.user._permission_short = True
             self.user.run()
-            self.send_message_to_channel("Strategy is started!")
+            msg = "Strategy is started!"\
+                "\nStrategy have permission to enter long and short."\
+                "If you want to prevent the strategy to enter long and short,"\
+                "please use /stop_entry_long and /stop_entry_short."
+            self.send_message_to_channel(msg)
             update.message.reply_text(text="User is running.")
 
-    def _stop_enter_long(self, update: Update, context: CallbackContext, permission_code: bool = False):
+    def _stop_enter_long(self,
+                         update: Update,
+                         context: CallbackContext,
+                         permission_code: bool = False):
         """Stop the user enter long."""
         self._permission(update, context, self._stop_enter_long)
         if permission_code:
@@ -140,7 +148,10 @@ class Manager:
             update.message.reply_text(text="User is stop enter long.")
             self.send_message_to_channel("User stop enter long.")
 
-    def _stop_enter_short(self, update: Update, context: CallbackContext, permission_code: bool = False):
+    def _stop_enter_short(self,
+                          update: Update,
+                          context: CallbackContext,
+                          permission_code: bool = False):
         """Stop the user enter short."""
         self._permission(update, context, self._stop_enter_short)
         if permission_code:
