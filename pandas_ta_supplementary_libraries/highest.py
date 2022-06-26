@@ -34,6 +34,6 @@ def highest(src:pd.Series, length:int, candle:int=None) -> float or pd.Series:
         # Find the last 'length' candles from teh current candle.
         result = src.iloc[(candle+1-length):candle+1].max()
     else:
-        result = src.rolling(window=length).max()
+        result = src.rolling(window=length).max().rename("highest")
         # result.reset_index(drop=True, inplace=True)
     return result

@@ -1,5 +1,6 @@
 import io
 import math
+import random
 import re
 from typing import Dict, Optional
 
@@ -14,6 +15,7 @@ from strategy_tester.decorator import validate_float
 from strategy_tester.models import Trade
 
 from .strategy import Strategy
+from strategy_tester import strategy
 
 
 class User(Client, Strategy):
@@ -32,7 +34,9 @@ class User(Client, Strategy):
                  interval: str,
                  leverage: int,
                  margin_type: str,
+                 chunk: bool,
                  custom_amount_cash: float = None,
+                 keep_time_limit_chunk: float = "1M",
                  requests_params: Optional[Dict[str, str]] = None,
                  tld: str = 'com',
                  testnet: bool = False,
@@ -48,18 +52,22 @@ class User(Client, Strategy):
         strategy.current_candle = None
         strategy._open_positions = []
         strategy._closed_positions = []
+        strategy._limit_chunk = []
         strategy._in_bot = False
         strategy.start_trade = False
         strategy.telegram_bot = telegram_bot
+        strategy.chunk = chunk
         if strategy.open_positions != []:
             msg = f"{strategy.primary_pair}{strategy.secondary_pair}"\
                 " has open positions."
             strategy._send_message(msg)
-
+        strategy.interval = interval
         strategy.leverage = strategy._set_leverage(leverage)
         strategy.margin_type = strategy._set_margin_type(margin_type)
         strategy.custom_amount_cash = strategy.\
             _validate_custom_amount_cash(custom_amount_cash)
+        strategy.keep_time_limit_chunk = strategy.\
+            _validate_keep_time_limit_chunk(keep_time_limit_chunk)
         # Start the thread's activity.
         strategy.threaded_websocket_manager.start()
         # Create a tmp dataframe for add kline websocket data
@@ -75,7 +83,6 @@ class User(Client, Strategy):
             "date", "open", "high", "low", "close", "volume", "close_time"
         ])
 
-        strategy.interval = interval
         strategy.data = strategy._validate_data(data)
 
         strategy.counter__ = 0
@@ -899,3 +906,73 @@ class User(Client, Strategy):
             self.telegram_bot.send_image_to_channel(img, caption=caption)
         else:
             print(img)
+
+    @staticmethod
+    def decomposition(num):
+        """
+        Decomposition of a number into random numbers between 80 and 120
+        until our sum of numbers is equal to the number we are decomposing.
+        Parameters
+        ----------
+        num : int
+            The number to decompose.
+        """
+        origin_num = num
+        numbers = []
+        while num > 0:
+            if num < 80:
+                numbers = [i + (num/len(numbers)) for i in numbers]
+                if sum(numbers) != origin_num:
+                    diff = origin_num - sum(numbers)
+                    numbers[0] += diff
+                break
+            rand_int = random.randint(80, 120)
+            numbers.append(rand_int)
+            num -= rand_int
+
+        return numbers
+
+    def _validate_keep_time_limit_chunk(self, keep_time_limit_chunk):
+        """
+        Validate the keep time limit chunk.
+        Parameters
+        ----------
+        keep_time_limit_chunk : str
+            The keep time limit chunk.
+        """
+        numerical = float(keep_time_limit_chunk[0])
+        letter = keep_time_limit_chunk[1]
+        if letter not in ["s", "m", "h", "d"]:
+            raise ValueError("Keep time limit chunk must be in seconds, "
+                             "minutes, hours or days.")
+        if numerical < 0:
+            raise ValueError("Keep time limit chunk must be greater than 0.")
+        
+        if letter == "s":
+            numerical = numerical
+        
+        if letter == "m":
+            numerical = numerical * 60
+
+        if letter == "h":
+            numerical = numerical * 60 * 60
+        
+        if letter == "d":
+            numerical = numerical * 60 * 60 * 24
+            
+        interval = self.interval
+        # Convert interval to seconds
+        if interval[1] == "s":
+            interval = interval[0]
+        elif interval[1] == "m":
+            interval = interval[0] * 60
+        elif interval[1] == "h":
+            interval = interval[0] * 60 * 60
+        elif interval[1] == "d":
+            interval = interval[0] * 60 * 60 * 24
+        
+        if numerical < interval:
+            raise ValueError("Keep time limit chunk must be multiple of interval.e.g.  1h, 2d, 3m, 4s")
+        
+        return numerical
+        

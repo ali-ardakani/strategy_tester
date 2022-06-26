@@ -46,5 +46,5 @@ def lowest(src:pd.Series, length:int, candle:int=None) -> float or pd.Series:
         # Find the last 'length' candles from teh current candle.
         result = src.iloc[(candle+1-length):candle+1].min()
     else:
-        result = src.rolling(window=length).min()
+        result = src.rolling(window=length).min().rename("lowest")
     return result

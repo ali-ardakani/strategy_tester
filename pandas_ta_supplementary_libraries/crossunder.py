@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def crossunder(source1:pd.Series, source2:pd.Series) -> pd.DataFrame:
+def crossunder(source1:pd.Series, source2:pd.Series) -> pd.Series:
     """
     Returns the crossunder of the two series.
     :param source1: The first source series.

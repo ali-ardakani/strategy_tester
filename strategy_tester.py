@@ -1,14 +1,17 @@
+import inspect
+import re
 from datetime import datetime
+from threading import Thread
+
+import pandas as pd
+
+from strategy_tester.backtest import Backtest
+from strategy_tester.commands.calculator_trade import CalculatorTrade
+from strategy_tester.encoder import NpEncoder
 from strategy_tester.handler.datahandler import DataHandler
 from strategy_tester.models.trade import Trade
-import pandas as pd
-from strategy_tester.commands.calculator_trade import CalculatorTrade
-from strategy_tester.backtest import Backtest
 from strategy_tester.periodic import PeriodicCalc
-import re
 from strategy_tester.sheet import Sheet
-from strategy_tester.encoder import NpEncoder
-from threading import Thread
 
 
 class StrategyTester:
@@ -53,6 +56,7 @@ class StrategyTester:
     """
 
     def set_init(strategy):
+        strategy._contract = False
         strategy._cash = 10000
         strategy._initial_capital = 10000
         strategy.long = "long"
@@ -68,7 +72,7 @@ class StrategyTester:
         strategy.links_results = {}
         strategy.threads_sheet = []
         strategy.cash_series = pd.Series(dtype=float)
-        
+
     @property
     def cash(strategy):
         return strategy._cash
@@ -95,6 +99,14 @@ class StrategyTester:
     @commission.setter
     def commission(strategy, comm):
         strategy._commission = strategy._set_commission(comm)
+        
+    @property
+    def contract(self):
+        return self._contract
+    
+    @contract.setter
+    def contract(strategy, contract):
+        strategy._contract = contract
 
     def entry(strategy,
               signal: str,
@@ -123,15 +135,20 @@ class StrategyTester:
         """
         # TODO: add limit and stop
 
-        if strategy._cash > 0:
-            strategy._commission_calc(qty)
+        if strategy._cash > 50:
             current_candle = strategy._current_candle_calc()
-            trade = Trade(type=direction,
-                          entry_date=strategy._prepare_time(current_candle.close_time), # Because close time a few mili seconds before the next candle
-                          entry_price=current_candle.close,
-                          entry_signal=signal,
-                          contract=strategy._contract_calc(qty),
-                          comment=comment)
+            qty = strategy._validate_qty(qty)
+            strategy._commission_calc(qty)
+            trade = Trade(
+                type=direction,
+                entry_date=strategy._prepare_time(
+                    current_candle.close_time
+                ),
+                entry_price=current_candle.close,
+                entry_signal=signal,
+                contract=strategy._contract_calc(qty),
+                comment=comment)
+            print("entry contract:", trade.contract)
             strategy.open_positions.append(trade)
 
     def exit(strategy,
@@ -160,27 +177,36 @@ class StrategyTester:
             The comment of the position.
         """
         # TODO: add limit and stop
-        qty = strategy._validate_qty(qty)
         if strategy.open_positions != []:
-            trade = next((trade for trade in strategy.open_positions
-                          if trade.entry_signal == from_entry), None)
-            if trade and strategy.current_candle < strategy.last_candle:
-                current_candle = strategy._current_candle_calc()
-                # Calculate parameters such as profit, draw down, etc.
-                data_trade = strategy.data.loc[strategy.data.date.between(
-                    trade.entry_date, current_candle.close_time)]
-                if not data_trade.empty:
-                    trade.exit_date = strategy._prepare_time(current_candle.close_time)
-                    trade.exit_price = current_candle.close
-                    trade.exit_signal = signal
-                    CalculatorTrade(trade, data_trade)
-                    strategy._cash_calc(trade)
-                    strategy.closed_positions.append(trade)
-                    strategy.open_positions.remove(trade)
-                    strategy.cash_series = pd.concat(
-                        [strategy.cash_series, pd.Series(data=strategy._cash, index=[current_candle.close_time])])
-                    
-    @staticmethod                    
+            for trade in strategy.open_positions:
+                if trade.entry_signal == from_entry and \
+                    strategy.current_candle < strategy.last_candle:
+                    qty = strategy._validate_qty(qty, trade)
+                    current_candle = strategy._current_candle_calc()
+                    # Calculate parameters such as profit, draw down, etc.
+                    data_trade = strategy.data.loc[strategy.data.date.between(
+                        trade.entry_date, current_candle.close_time)]
+                    if not data_trade.empty:
+                        trade.exit_date = strategy._prepare_time(
+                            current_candle.close_time)
+                        trade.exit_price = current_candle.close
+                        trade.contract = qty * trade.contract
+                        trade.exit_signal = signal
+                        CalculatorTrade(trade, data_trade)
+                        strategy._cash_calc(trade)
+                        strategy.closed_positions.append(trade)
+                        if qty < 1:
+                            # Update contract if qty is less than 1 in position of open_positions
+                            trade.contract = (1-qty) * trade.contract
+                        else:
+                            strategy.open_positions.remove(trade)
+                        strategy.cash_series = pd.concat([
+                            strategy.cash_series,
+                            pd.Series(data=strategy._cash,
+                                    index=[current_candle.close_time])
+                        ])
+
+    @staticmethod
     def _round_time(time: int) -> datetime:
         """
         Round time to the nearest 1 second.
@@ -188,22 +214,22 @@ class StrategyTester:
         Description:
             This function is written because when the strategy wants to open a position, it opens with the closing time of the previous candlestick, which is actually slightly shorter than the opening time of the actual candlestick, so to compensate for this difference, this function is set to 1 Rounds in seconds.
         """
-        
+
         return pd.to_datetime(time, unit="ms").round("1s")
-    
+
     @staticmethod
     def _convert_time(time: datetime) -> int:
         """
         Convert time to milliseconds.
         """
         return time.timestamp() * 1000
-    
+
     def _prepare_time(self, time: int) -> int:
         """
         Prepare time to be used in the strategy.
         """
         return self._convert_time(self._round_time(time))
-                    
+
     def _set_data(strategy, data: DataHandler = None):
         """Convert the data to DataHandler object and set the data to the StrategyTester.
         
@@ -282,9 +308,13 @@ class StrategyTester:
             The quantity of the trade.
         """
         current_candle = strategy._current_candle_calc()
-        contract = (qty * strategy._cash) / current_candle.close
-        # Subtract the contract from the cash
-        strategy._cash -= qty * strategy._cash
+        if strategy.contract:
+            contract = qty
+            strategy._cash -= qty * current_candle.close
+        else:
+            contract = (qty * strategy._cash) / current_candle.close
+            # Subtract the contract from the cash
+            strategy._cash -= qty * strategy._cash
         return contract
 
     def _current_candle_calc(strategy):
@@ -294,19 +324,46 @@ class StrategyTester:
         current_candle = strategy.data.loc[strategy.current_candle]
         return current_candle
 
-    @staticmethod
-    def _validate_qty(qty: float) -> float:
+    def _validate_qty(self, qty: float, trade: Trade = None):
         """
         Validate the quantity of the trade.
-        
+
         Parameters
         ----------
         qty: float
             The quantity of the trade.
         """
-        if not (qty > 0 and qty <= 1):
+        current_frame = inspect.currentframe()
+        cal_frame = inspect.getouterframes(current_frame, 2)
+        caller = cal_frame[1][3]
+
+        if not qty > 0:
             raise ValueError(
-                "The quantity of the trade must be between 0 and 1.")
+                "The quantity of the trade must be greater than 0.")
+        if self.contract:
+            if caller == "exit":
+                if qty > trade.contract:
+                    raise ValueError(
+                        "The quantity of the trade must be less than or equal to the contract.")
+                else:
+                    return qty
+            # Check qty is not greater than the contract of cash
+            current_candle = self._current_candle_calc()
+            my_contract = self.cash/current_candle.close
+            if qty > my_contract:
+                raise ValueError(
+                    "The quantity of the trade must be less than the contract of cash.")
+            return qty
+        
+        if caller == "exit":
+            if qty > 1:
+                raise ValueError(
+                    "The quantity of the trade must be less than 1.")
+        if qty > 1:
+            qty = qty / self._cash
+            if qty > 1:
+                raise ValueError(
+                    "The quantity of the trade must be less than the cash.")
         return qty
 
     def list_of_trades(strategy) -> list:
@@ -317,9 +374,12 @@ class StrategyTester:
         list
             The list of all the open trades and closed trades.
         """
-        trades = pd.DataFrame(strategy.closed_positions + strategy.open_positions)
-        trades.entry_date = pd.to_datetime(trades.entry_date, unit="ms").round("1s")
-        trades.exit_date = pd.to_datetime(trades.exit_date, unit="ms").round("1s")
+        trades = pd.DataFrame(strategy.closed_positions +
+                              strategy.open_positions)
+        trades.entry_date = pd.to_datetime(trades.entry_date,
+                                           unit="ms").round("1s")
+        trades.exit_date = pd.to_datetime(trades.exit_date,
+                                          unit="ms").round("1s")
         return trades
 
     @property
@@ -369,7 +429,11 @@ class StrategyTester:
                     sheet_id, worksheet_id, result["net_profit_percent"])
         sheet.worksheet.append_rows(results)
 
-    def periodic_calc(strategy, days: int = None, start_date: str=None, end_date: str=None, sheet: Sheet = None) -> dict:
+    def periodic_calc(strategy,
+                      days: int = None,
+                      start_date: str = None,
+                      end_date: str = None,
+                      sheet: Sheet = None) -> dict:
         """
         Calculate the periodic returns of the strategy.
         
@@ -412,5 +476,6 @@ class StrategyTester:
         return results_objs
 
     def plot_initial_capital(strategy):
-        strategy.cash_series.index = pd.to_datetime(strategy.cash_series.index, unit="ms")
+        strategy.cash_series.index = pd.to_datetime(strategy.cash_series.index,
+                                                    unit="ms")
         strategy.cash_series.plot(label="Initial Capital Chart")

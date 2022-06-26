@@ -52,7 +52,8 @@ class DataHandler:
         self.symbol = params.get('symbol', "BTCUSDT")
         self.interval = self._validate_interval(params.get("interval", "5m"))
         self.months = self._validate_months(params.get("months", 12))
-        self.data = self._validate_data(params.get("data", None))
+        self.data = self._validate_data(params.get("data", None),
+                                        params.get("update_data", False))
         
     def _validate_interval(self, interval: str) -> str:
         """
@@ -98,7 +99,7 @@ class DataHandler:
         else:
             raise ValueError("The months must be a positive integer.")
 
-    def _validate_data(self, data: pd.DataFrame) -> pd.DataFrame:
+    def _validate_data(self, data: pd.DataFrame, update_data:bool) -> pd.DataFrame:
         """
         Validate the data.
         
@@ -114,6 +115,7 @@ class DataHandler:
         """
         if data is None:
             data = self._get_data(self.interval)
+    
         if not isinstance(data, pd.DataFrame):
             raise TypeError("The data must be a pandas DataFrame.")
 
@@ -121,43 +123,26 @@ class DataHandler:
             raise ValueError("The data is empty.")
 
         required_columns = ['date', 'open', 'high', 'low', 'close', 'volume', 'close_time']
-        # wrong_columns = [
-        #     column for column in required_columns if column not in data.columns.to_list()+[data.index.name]
-        # ]
-        # if wrong_columns:
-        #     raise ValueError(
-        #         "The data must have the columns: {}".format(wrong_columns))
 
-        # if data.index.name != 'date':
-        #     data.set_index('date', inplace=True)
-            
-        # # Check type of the date and close_time
-        # if np.issubdtype(data.index, np.datetime64):
-        #     data.index = data.index.astype(int)/10**6
-        # if np.issubdtype(data['close_time'], np.datetime64):
-        #     data['close_time'] = data['close_time'].astype(int)/10**6
-            
-        # # Set interval
-        # self.interval = self._get_interval(data)
-        # return data
         wrong_columns = [
             column for column in required_columns if column not in data.columns.to_list()
         ]
         if wrong_columns:
             raise ValueError(
                 "The data must have the columns: {}".format(wrong_columns))
-
-        # if data.index.name != 'date':
-        #     data.set_index('date', inplace=True)
             
         # Check type of the date and close_time
         if np.issubdtype(data["date"], np.datetime64):
             data["date"] = data["date"].astype(np.int64)/10**6
         if np.issubdtype(data['close_time'], np.datetime64):
             data['close_time'] = data['close_time'].astype(np.int64)/10**6
-            
+
         # Set interval
         self.interval = self._get_interval(data)
+
+        if update_data:
+            data = self._update_data(data)
+
         return data
 
     def _get_data(self, interval: str) -> pd.DataFrame:
@@ -197,6 +182,38 @@ class DataHandler:
         data = data.astype({'date': 'float', 'open': 'float64', 'high': 'float64', 'low': 'float64', 'close': 'float64', 'volume': 'float64', 'close_time': 'float'})
         
         return data
+
+    def _update_data(self, data:pd.DataFrame) -> pd.DataFrame:
+        """
+        Update the data.
+        
+        Description:
+            Update the data.
+            
+        Parameters
+        ----------
+        data: DataFrame
+            The data that you want to update.
+            
+        Returns
+        -------
+        DataFrame
+            The updated data.
+        """
+        start_time = int(data.iloc[-1]["close_time"])
+        client = Client()
+        update_data = client.get_historical_klines(self.symbol, self.interval, start_time)
+        # Convert the data to a pandas DataFrame.
+        update_data = pd.DataFrame(update_data)
+        update_data.columns = ['date','open', 'high', 'low', 'close', 'volume','close_time', 'qav','num_trades','taker_base_vol','taker_quote_vol', 'ignore']
+        # data.drop(['qav','num_trades','taker_base_vol','taker_quote_vol', 'ignore'], axis=1, inplace=True)
+        update_data = update_data.astype({'date': 'float', 'open': 'float64', 'high': 'float64', 'low': 'float64', 'close': 'float64', 'volume': 'float64', 'close_time': 'float'})
+        
+        # Combine the data.
+        data = pd.concat([data, update_data], ignore_index=True)
+        
+        return data
+        
 
     @staticmethod
     def _get_interval(data: pd.DataFrame) -> str:
