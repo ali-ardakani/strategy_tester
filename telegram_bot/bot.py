@@ -58,6 +58,7 @@ class Manager:
         while True:
             try:
                 function(**kwargs)
+                break
             except ConnectTimeoutError:
                 time.sleep(10)
 
