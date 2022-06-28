@@ -172,6 +172,8 @@ class User(Client, Strategy):
     @current_kline.setter
     def current_kline(self, kline):
         kline.date = pd.to_datetime(kline.date, unit='ms')
+        # Convert dataframe to series
+        kline = kline.iloc[0]
         self._current_kline = kline
 
     def trade(strategy, row):
@@ -507,14 +509,13 @@ class User(Client, Strategy):
             for position in limited_positions:
                 if position.entry_date >= float(msg["k"]["t"]):
                     strategy.exit(position.entry_signal)
-        frame = pd.Series(msg['k'])
+        frame = pd.DataFrame([msg['k']])
         frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
-        frame.index = [
+        frame.columns = [
             'date', 'close_time', 'open', 'close', 'high', 'low', 'volume'
         ]
-        frame.name = frame['date']
+        frame.index = frame['date']
         frame = frame.astype(float)
-        strategy.current_kline = frame
         if msg["k"]["x"]:
             strategy.tmp_data = pd.concat([strategy.tmp_data, frame], axis=0)
             while strategy.data.empty:
@@ -550,6 +551,7 @@ class User(Client, Strategy):
                     strategy.conditions.apply(strategy.trade, axis=1)
                 except Exception as e:
                     strategy._send_error_message(e)
+        strategy.current_kline = frame
 
     def entry(strategy,
               signal: str,

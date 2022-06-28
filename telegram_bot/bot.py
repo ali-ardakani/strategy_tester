@@ -339,7 +339,6 @@ class Manager:
         """Get the current kline."""
         kline = self.user.current_kline
         if kline is not None:
-            kline = kline.to_series()
             text = f"Date: {kline['date']}\n"\
                 f"Open: {kline['open']}\n"\
                 f"High: {kline['high']}\n"\
