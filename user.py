@@ -507,7 +507,7 @@ class User(Client, Strategy):
             for position in limited_positions:
                 if position.entry_date >= float(msg["k"]["t"]):
                     strategy.exit(position.entry_signal)
-        frame = pd.Series([msg['k']])
+        frame = pd.Series(msg['k'])
         frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
         frame.index = [
             'date', 'close_time', 'open', 'close', 'high', 'low', 'volume'
