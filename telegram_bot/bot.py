@@ -143,6 +143,7 @@ class Manager:
             "/stop_close_position_with_close_condition -"\
             "Stop the user and close the position with close condition.\n"\
             "/status - Get the status of the user.\n"\
+            "/current_kline - Get the current kline.\n"\
             f"/secondary_asset - Get the {self.user.secondary_pair} asset.\n"\
             "/open_positions - Get the open positions of the user.\n"\
             "/close_positions - Get the closed positions of the user.\n"\
