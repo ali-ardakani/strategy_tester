@@ -87,7 +87,7 @@ class User(Client, Strategy):
             "date", "open", "high", "low", "close", "volume", "close_time"
         ])
 
-        strategy.data = strategy._validate_data(data)
+        strategy._validate_data(data)
 
         strategy.counter__ = 0
 
@@ -275,7 +275,14 @@ class User(Client, Strategy):
         except Exception as e:
             strategy._send_error_message(e)
 
-        return data
+        data.index = data.date
+        strategy.data = data
+        strategy.open = data.open
+        strategy.high = data.high
+        strategy.low = data.low
+        strategy.close = data.close
+        strategy.volume = data.volume
+        strategy.last_candle = data.date.iloc[-1]
 
     def __stream_live_account(strategy, msg: dict):
         """
