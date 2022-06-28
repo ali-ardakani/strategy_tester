@@ -1,12 +1,9 @@
-from random import seed
 from strategy_tester import StrategyTester
 from strategy_tester.backtest import Backtest
 from .indicator import IndicatorsParallel
-from .encoder import NpEncoder
 import pandas as pd
 from threading import Thread
 import os
-import time
 from .sheet import Sheet
 from datetime import datetime
 import plotly.graph_objects as go
@@ -17,6 +14,9 @@ class Strategy(StrategyTester, IndicatorsParallel):
     StrategyTester is a class that tests a strategy.
     StrategyTester can be used to test a strategy in financial markets.
     """
+    
+    _permission_long = True
+    _permission_short = True
 
     @property
     def conditions(strategy):
@@ -102,6 +102,12 @@ class Strategy(StrategyTester, IndicatorsParallel):
             return True
         else:
             return False
+        
+    def entry(strategy, signal: str, direction: str, qty: float = 1, limit: float = None, stop: float = None, comment: str = None):
+        if strategy._permission_long and signal == "long":
+            return super().entry(signal, direction, qty, limit, stop, comment)
+        elif strategy._permission_short and signal == "short":
+            return super().entry(signal, direction, qty, limit, stop, comment)
         
     def indicators(strategy) -> None:
         """
@@ -418,7 +424,97 @@ class Strategy(StrategyTester, IndicatorsParallel):
         else:
             return pd.Series(backtest.result|dict(strategy.parameters))
         
+    def just_long(self):
+        """
+        In this function, you can get backtest result of just long.
+        
+        Note:
+            This function should only be called when the strategy is running.
+        """
+        trades = self.list_of_trades()
+        trades_long = trades[trades.type == "long"]
+        if trades_long.exit_date.dropna().empty:
+            return None
+        # Backtest
+        backtest = Backtest(trades_long, self.data, self._initial_capital)
+        return pd.Series(backtest.result|dict(self.parameters))
+    
+    def just_trades_long(self):
+        """
+        In this function, you can get series of trades of just long.
+     
+        Note:
+            This function should only be called when the strategy is running.
+        """
+        trades = self.list_of_trades()
+        trades_long = trades[trades.type == "long"]
+        if trades_long.exit_date.dropna().empty:
+            return None
+        return trades_long
+    
+    def just_short(self):
+        """
+        In this function, you can get backtest result of just short.
+        
+        Note:
+            This function should only be called when the strategy is running.
+        """
+        trades = self.list_of_trades()
+        trades_short = trades[trades.type == "short"]
+        if trades_short.exit_date.dropna().empty:
+            return None
+        # Backtest
+        backtest = Backtest(trades_short, self.data, self._initial_capital)
+        return pd.Series(backtest.result|dict(self.parameters))
+    
+    def just_trades_short(self):
+        """
+        In this function, you can get series of trades of just short.
+     
+        Note:
+            This function should only be called when the strategy is running.
+        """
+        trades = self.list_of_trades()
+        trades_short = trades[trades.type == "short"]
+        if trades_short.exit_date.dropna().empty:
+            return None
+        return trades_short
+    
+    def only_long(self) -> "Strategy":
+        """
+        In this function, you can get backtest when
+        the strategy is only allowed to enter long.
+        
+        Returns:
+            Strategy
+                The strategy that only enter long.
 
+        Note:
+            This function re-runs the strategy,
+            except that it only has a long license.
+        """
+        
+        self._permission_short = False
+        self.run()
+        return self
+    
+    def only_short(self) -> "Strategy":
+        """
+        In this function, you can get backtest when
+        the strategy is only allowed to enter short.
+        
+        Returns:
+            Strategy
+                The strategy with only short license.
+
+        Note:
+            This function re-runs the strategy,
+            except that it only has a short license.
+        """
+        self._permission_long = False
+        self.run()
+        return self
+    
     def run(strategy):
         """Run the strategy."""
         strategy.set_init()

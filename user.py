@@ -1,3 +1,4 @@
+from datetime import datetime
 import io
 import math
 import random
@@ -7,15 +8,14 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from binance import Client, ThreadedWebsocketManager
+from binance import Client
 from binance.exceptions import BinanceAPIException
 
+from strategy_tester.binance_inheritance import ThreadedWebsocketManager
 from strategy_tester.commands import CalculatorTrade
 from strategy_tester.decorator import validate_float
 from strategy_tester.models import Trade
-
-from .strategy import Strategy
-from strategy_tester import strategy
+from strategy_tester.strategy import Strategy
 
 
 class User(Client, Strategy):
@@ -34,9 +34,10 @@ class User(Client, Strategy):
                  interval: str,
                  leverage: int,
                  margin_type: str,
-                 chunk: bool,
+                 chunk: bool = False,
                  custom_amount_cash: float = None,
                  keep_time_limit_chunk: float = "1M",
+                 percent_sl: float = None,
                  requests_params: Optional[Dict[str, str]] = None,
                  tld: str = 'com',
                  testnet: bool = False,
@@ -55,6 +56,7 @@ class User(Client, Strategy):
         strategy._limit_chunk = []
         strategy._in_bot = False
         strategy.start_trade = False
+        strategy.connection_internet = True
         strategy.telegram_bot = telegram_bot
         strategy.chunk = chunk
         if strategy.open_positions != []:
@@ -62,10 +64,12 @@ class User(Client, Strategy):
                 " has open positions."
             strategy._send_message(msg)
         strategy.interval = interval
+        strategy.percent_sl = percent_sl
         strategy.leverage = strategy._set_leverage(leverage)
         strategy.margin_type = strategy._set_margin_type(margin_type)
-        strategy.custom_amount_cash = strategy.\
-            _validate_custom_amount_cash(custom_amount_cash)
+        strategy.custom_amount_cash = custom_amount_cash if custom_amount_cash is None else \
+            strategy.\
+                _validate_custom_amount_cash(custom_amount_cash)
         strategy.keep_time_limit_chunk = strategy.\
             _validate_keep_time_limit_chunk(keep_time_limit_chunk)
         # Start the thread's activity.
@@ -159,6 +163,25 @@ class User(Client, Strategy):
                 strategy._open_positions.append(trade)
             return strategy._open_positions
 
+    def trade(strategy, row):
+        """Execute the trade for the strategy.
+        
+        Description
+        -----------
+        This function is used to execute the trade for the strategy.
+        In this function, set the current candle and execute the trade_calc function.
+        
+        Parameters
+        ----------
+        row: DataFrame
+            The row of the data that you want to execute the trade for.
+        """
+        strategy.current_candle = row.name
+        if strategy.percent_sl is not None:
+            strategy._sl_onion()
+
+        strategy.trade_calc(row)
+
     @staticmethod
     @validate_float
     def _validate_custom_amount_cash(custom_amount_cash):
@@ -229,7 +252,7 @@ class User(Client, Strategy):
         # Get remind kline data
         data = strategy._get_remind_kline(data)
         print(len(data))
-        
+
         # <symbol>@kline_<interval>
         # strategy.stream = \
         #     strategy.threaded_websocket_manager.start_kline_socket(
@@ -240,6 +263,7 @@ class User(Client, Strategy):
         # Run stream live account
         try:
             strategy.listen_key = strategy.futures_stream_get_listen_key()
+            strategy.start_listen_key = data.iloc[-1].date
             strategy.stream = strategy.symbol.lower() + "@kline_" + \
                 strategy.interval
             strategy.stream_live_account = \
@@ -261,11 +285,43 @@ class User(Client, Strategy):
         -----------
             Send all possible changes if any.
         """
+        if msg["data"]["e"] == "connection error":
+            if strategy.connection_internet:
+                msg = "Disconnected from the internet at \n"\
+                    f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                strategy._send_message(msg)
+                strategy.connection_internet = False
+        else:
+            if not strategy.connection_internet:
+                strategy.connection_internet = True
+                msg = "Connected to the internet at \n"\
+                    f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                strategy._send_message(msg)
+
         if msg["stream"] == strategy.stream:
             strategy._human_readable_kline(msg["data"])
+            # Check difference between date of
+            # current candle and date of start_listen_key
+            # equal or greater than 55 min
+            if (msg["data"]["k"]["t"] -
+                    strategy.start_listen_key) >= 55 * 60 * 1000:
+                try:
+                    strategy.futures_stream_keepalive(strategy.listen_key)
+                except BinanceAPIException as e:
+                    if "This listenKey does not exist." in e.message:
+                        strategy.listen_key = strategy.futures_stream_get_listen_key(
+                        )
+                        strategy.start_listen_key = msg["data"]["k"]["t"]
+
         elif msg["data"]["e"] == "listenKeyExpired":
             # Get new listen key and restart stream live account
-            strategy.futures_stream_keepalive(strategy.listen_key)
+            try:
+                strategy.futures_stream_keepalive(strategy.listen_key)
+            except BinanceAPIException as e:
+                if "This listenKey does not exist." in e.message:
+                    strategy.listen_key = strategy.futures_stream_get_listen_key(
+                    )
+                    strategy.start_listen_key = msg["data"]["E"]
         elif msg["data"]["e"] == "MARGIN_CALL":
             # Convert int time to datetime
             event_time = pd.to_datetime(msg["data"]["E"], unit="ms")
@@ -424,6 +480,14 @@ class User(Client, Strategy):
         """
         Convert kline data to pandas dataframe
         """
+        if strategy.start_trade:
+            limited_positions = [
+                position for position in strategy._open_positions
+                if position.order_type == "LIMIT"
+            ]
+            for position in limited_positions:
+                if position.entry_date >= float(msg["k"]["t"]):
+                    strategy.exit(position.entry_signal)
         if msg["k"]["x"]:
             frame = pd.DataFrame([msg['k']])
             frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
@@ -471,6 +535,7 @@ class User(Client, Strategy):
               signal: str,
               direction: str,
               percent_of_assets: float = 1,
+              qty: float = None,
               limit: float = None,
               stop: float = None,
               comment: str = None):
@@ -503,29 +568,54 @@ class User(Client, Strategy):
             # then open position
             # (Only used for having 1 open position at the same time)
             if strategy.open_positions == []:
-                quantity = float(
-                    str(strategy.free_secondary * percent_of_assets * 0.997 /
-                        current_candle["close"])[:5])
+                if qty is None:
+                    quantity = float(
+                        str(strategy.free_secondary * percent_of_assets *
+                            0.997 / current_candle["close"])[:5])
+                else:
+                    quantity = float(str(qty)[:5])
                 if direction == "long":
                     side = "BUY"
                 elif direction == "short":
                     side = "SELL"
 
+                if strategy.min_usd < quantity * current_candle["close"]:
+                    if strategy.keep_time_limit_chunk is not None and \
+                        limit is None:
+                        entry_price = quantity * current_candle["close"]
+                        if entry_price > strategy.max_usd:
+                            chunks = strategy.decomposition(entry_price)
+                            for chunk in chunks:
+                                chunk = float(
+                                    str(chunk / current_candle["close"])[:5])
+                                multiplier = 0.1 / len(chunks)
+                                strategy.entry(
+                                    signal=signal,
+                                    direction=direction,
+                                    percent_of_assets=percent_of_assets,
+                                    qty=chunk,
+                                    limit=multiplier * current_candle["close"],
+                                    stop=stop,
+                                    comment=comment)
                 try:
                     strategy.futures_create_order(
                         symbol=strategy.symbol,
                         side=side,
-                        type='MARKET',
+                        type="MARKET" if limit is None else "LIMIT",
                         quantity=quantity,
+                        price=current_candle["close"]
+                        if limit is None else limit,
                         newOrderRespType='RESULT')
 
-                    trade = Trade(type=direction,
-                                  entry_date=strategy._prepare_time(
-                                      current_candle.close_time),
-                                  entry_price=current_candle.close,
-                                  entry_signal=signal,
-                                  contract=quantity,
-                                  comment=comment)
+                    trade = Trade(
+                        type=direction,
+                        entry_date=strategy._prepare_time(
+                            current_candle.close_time),
+                        entry_price=current_candle.close,
+                        entry_signal=signal,
+                        contract=quantity,
+                        order_type="MARKET" if limit is None else "LIMIT",
+                        comment=comment)
 
                     close_time = current_candle.close_time
                     plot = strategy._plot_to_channel(trade)
@@ -668,6 +758,37 @@ class User(Client, Strategy):
                             f"Exit Price: {current_candle['close']}\n"\
                             f"Error: {e}"
                         strategy._send_message(msg)
+            else:
+                strategy._check_exit_if_position(current_candle, from_entry)
+
+    def _check_exit_if_position(self, current_candle: pd.Series,
+                                from_entry: str) -> None:
+        """
+        Control the exit signal if it has a position.
+
+        Description:
+            If current_candle is not the last candle in data
+            and receive an exit signal from the strategy,
+            so send message to user that the exit signal is received
+            and strategy could not close position so
+            if you want to close position you should use the command
+            /stop_close_position.
+        """
+        if self.start_trade:
+            open_position = [
+                position for position in self.open_positions
+                if position.entry_signal == from_entry
+            ]
+            for position in open_position:
+                msg = "Exit signal received at"\
+                    f" {self._round_time(current_candle.close_time)}"\
+                    " but position is not closed"\
+                    f"\n\nSymbol: {self.symbol}"\
+                    f"\nEntry Date: {position.entry_date}"\
+                    f"\nEntry Signal: {position.entry_signal}"\
+                    f"\nComment: {position.comment}"
+
+                self._send_message(msg)
 
     def close_positions(strategy):
         """
@@ -921,7 +1042,7 @@ class User(Client, Strategy):
         numbers = []
         while num > 0:
             if num < 80:
-                numbers = [i + (num/len(numbers)) for i in numbers]
+                numbers = [i + (num / len(numbers)) for i in numbers]
                 if sum(numbers) != origin_num:
                     diff = origin_num - sum(numbers)
                     numbers[0] += diff
@@ -941,38 +1062,57 @@ class User(Client, Strategy):
             The keep time limit chunk.
         """
         numerical = float(keep_time_limit_chunk[0])
-        letter = keep_time_limit_chunk[1]
+        letter = keep_time_limit_chunk[1].lower()
         if letter not in ["s", "m", "h", "d"]:
-            raise ValueError("Keep time limit chunk must be in seconds, "
-                             "minutes, hours or days.")
+            raise ValueError("Keep time limit chunk must be in s, "
+                             "m, h or d.")
         if numerical < 0:
             raise ValueError("Keep time limit chunk must be greater than 0.")
-        
+
         if letter == "s":
             numerical = numerical
-        
+
         if letter == "m":
             numerical = numerical * 60
 
         if letter == "h":
             numerical = numerical * 60 * 60
-        
+
         if letter == "d":
             numerical = numerical * 60 * 60 * 24
-            
-        interval = self.interval
+
+        interval = self.interval.lower()
+        int_ = int(interval[0])
         # Convert interval to seconds
         if interval[1] == "s":
-            interval = interval[0]
+            interval = int_
         elif interval[1] == "m":
-            interval = interval[0] * 60
+            interval = int_ * 60
         elif interval[1] == "h":
-            interval = interval[0] * 60 * 60
+            interval = int_ * 60 * 60
         elif interval[1] == "d":
-            interval = interval[0] * 60 * 60 * 24
-        
-        if numerical < interval:
-            raise ValueError("Keep time limit chunk must be multiple of interval.e.g.  1h, 2d, 3m, 4s")
-        
-        return numerical
-        
+            interval = int_ * 60 * 60 * 24
+
+        # if numerical < interval:
+        #     raise ValueError("Keep time limit chunk must be multiple of interval.e.g.  1h, 2d, 3m, 4s")
+
+        return numerical * 1000
+
+    def _sl_onion(self):
+        """
+        In case of setting percent_sl
+        positions that reach percent_sl of
+        their entry price will be closed.
+        """
+        current_candle = self.data.loc[self.current_candle]
+        for position in self._open_positions:
+            if position.type == "long":
+                if current_candle.close < position.entry_price * (
+                        1 - self.percent_sl):
+                    self.exit(position.entry_signal,
+                              signal="STOP LOSS (ONION)")
+            else:
+                if current_candle.close > position.entry_price * (
+                        1 + self.percent_sl):
+                    self.exit(position.entry_signal,
+                              signal="STOP LOSS (ONION)")

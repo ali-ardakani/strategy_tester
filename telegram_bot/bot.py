@@ -1,3 +1,4 @@
+from concurrent.futures import thread
 import io
 import os
 
@@ -11,6 +12,10 @@ from telegram.ext.commandhandler import CommandHandler, Filters
 from telegram.ext.messagehandler import MessageHandler
 from telegram.ext.updater import Updater
 from telegram.update import Update
+from telegram.vendor.ptb_urllib3.urllib3.exceptions import ConnectTimeoutError
+from strategy_tester.commands import connect_on
+from threading import Thread
+import time
 
 
 class Manager:
@@ -49,25 +54,43 @@ class Manager:
     def stop(self):
         self.updater.stop()
 
+    def _check_connect_on(self, function:callable, **kwargs):
+        while True:
+            try:
+                function(**kwargs)
+            except ConnectTimeoutError:
+                time.sleep(10)
+
     def send_message_to_channel(self, text: str):
         if self.channel_id is None:
             raise ValueError("Channel ID is not set")
-        self.bot.send_message(chat_id=self.channel_id, text=text)
+
+        thread = Thread(
+            target=self._check_connect_on,
+            kwargs={
+                "function": self.bot.send_message,
+                "chat_id": self.channel_id,
+                "text": text
+                })
+        thread.start()
 
     def send_image_to_channel(self, img_bytes: bytes, caption: str):
         if self.channel_id is None:
             raise ValueError("Channel ID is not set")
-        self.bot.send_photo(chat_id=self.channel_id,
-                            photo=img_bytes,
-                            caption=caption)
+        thread = Thread(
+            target=self._check_connect_on,
+            kwargs={
+                "function": self.bot.send_photo,
+                "chat_id": self.channel_id,
+                "photo": img_bytes,
+                "caption": caption
+                })
+        thread.start()
 
     def _send_message_to_bot(self, update: Update, context: CallbackContext,
                              text: str):
         """Send every message to the bot."""
         update.message.reply_text(text=text)
-
-    def test_send(self):
-        self.bot.send_message(chat_id="@aka1378", text="lsdjfslfjlsjl")
 
     def _handler(self):
         """Add command handler."""

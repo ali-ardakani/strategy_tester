@@ -4,3 +4,4 @@ tmp/
 env_test
 *.json
 *.ipynb
+cache/
