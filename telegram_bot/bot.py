@@ -337,9 +337,14 @@ class Manager:
     def _current_kline(self, update: Update, context: CallbackContext):
         """Get the current kline."""
         kline = self.user.current_kline
-        if kline:
-            update.message.reply_text(
-                text="Current kline: {}".format(kline))
+        if kline is not None:
+            text = f"Date: {kline['date']}\n"\
+                f"Open: {kline['open']}\n"\
+                f"High: {kline['high']}\n"\
+                f"Low: {kline['low']}\n"\
+                f"Close: {kline['close']}\n"\
+                f"Volume: {kline['volume']}"
+            update.message.reply_text(text=text)
         else:
             update.message.reply_text(text="No current kline.")
 
