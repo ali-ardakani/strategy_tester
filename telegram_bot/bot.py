@@ -119,6 +119,8 @@ class Manager:
         self.updater.dispatcher.add_handler(
             CommandHandler("status", self._status))
         self.updater.dispatcher.add_handler(
+            CommandHandler("current_kline", self._current_kline))
+        self.updater.dispatcher.add_handler(
             CommandHandler("secondary_asset", self._secondary_asset))
         self.updater.dispatcher.add_handler(
             CommandHandler("open_positions", self._open_positions))
@@ -331,6 +333,15 @@ class Manager:
                 text="Closed positions: {}".format(closed_positions))
         else:
             update.message.reply_text(text="No closed positions.")
+            
+    def _current_kline(self, update: Update, context: CallbackContext):
+        """Get the current kline."""
+        kline = self.user.current_kline
+        if kline:
+            update.message.reply_text(
+                text="Current kline: {}".format(kline))
+        else:
+            update.message.reply_text(text="No current kline.")
 
     def _reply(self, update: Update, context: CallbackContext):
         """Reply to the message."""

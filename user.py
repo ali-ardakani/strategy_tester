@@ -25,6 +25,8 @@ class User(Client, Strategy):
     _entry = False
     _permission_long = True
     _permission_short = True
+    
+    _current_kline = None
 
     def __init__(strategy,
                  api_key: str,
@@ -162,6 +164,15 @@ class User(Client, Strategy):
                     comment="This is the first trade after restart bot.")
                 strategy._open_positions.append(trade)
             return strategy._open_positions
+        
+    @property
+    def current_kline(self):
+        return self._current_kline
+    
+    @current_kline.setter
+    def current_kline(self, kline):
+        kline.date = pd.to_datetime(kline.date, unit='ms')
+        self._current_kline = kline
 
     def trade(strategy, row):
         """Execute the trade for the strategy.
@@ -305,6 +316,7 @@ class User(Client, Strategy):
                     f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 strategy._send_message(msg)
 
+        
         if msg["stream"] == strategy.stream:
             strategy._human_readable_kline(msg["data"])
             # Check difference between date of
@@ -463,7 +475,7 @@ class User(Client, Strategy):
         else:
             print(strategy.stream)
             print(msg)
-
+        
     def _combine_data(strategy):
         """Add last websocket data to main data"""
 
@@ -495,14 +507,15 @@ class User(Client, Strategy):
             for position in limited_positions:
                 if position.entry_date >= float(msg["k"]["t"]):
                     strategy.exit(position.entry_signal)
+        frame = pd.DataFrame([msg['k']])
+        frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
+        frame.columns = [
+            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume'
+        ]
+        frame.index = frame['date']
+        frame = frame.astype(float)
+        strategy.current_kline = frame
         if msg["k"]["x"]:
-            frame = pd.DataFrame([msg['k']])
-            frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
-            frame.columns = [
-                'date', 'close_time', 'open', 'close', 'high', 'low', 'volume'
-            ]
-            frame.index = frame['date']
-            frame = frame.astype(float)
             strategy.tmp_data = pd.concat([strategy.tmp_data, frame], axis=0)
             while strategy.data.empty:
                 pass
