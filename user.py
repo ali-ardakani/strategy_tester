@@ -312,6 +312,9 @@ class User(Client, Strategy):
                 strategy._send_message(msg)
                 strategy.connection_internet = False
         elif msg["data"]["e"] == "stream live error":
+            msg = "Stream live error at \n"\
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            strategy._send_message(msg)
             strategy.threaded_websocket_manager.stop()
             strategy._validate_data(strategy.data)
         else:
@@ -335,6 +338,9 @@ class User(Client, Strategy):
                     strategy.futures_stream_keepalive(strategy.listen_key)
                 except BinanceAPIException as e:
                     if "This listenKey does not exist." in e.message:
+                        msg = "Stream live error at \n"\
+                            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                        strategy._send_message(msg)
                         strategy.threaded_websocket_manager.stop()
                         strategy._validate_data(strategy.data)
 
@@ -344,6 +350,9 @@ class User(Client, Strategy):
                 strategy.futures_stream_keepalive(strategy.listen_key)
             except BinanceAPIException as e:
                 if "This listenKey does not exist." in e.message:
+                    msg = "Stream live error at \n"\
+                        f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    strategy._send_message(msg)
                     strategy.threaded_websocket_manager.stop()
                     strategy._validate_data(strategy.data)
         elif msg["data"]["e"] == "MARGIN_CALL":
