@@ -330,10 +330,10 @@ class User(Client, Strategy):
             # Check difference between date of
             # current candle and date of start_listen_key
             # equal or greater than 55 min
-            print((msg["data"]["k"]["t"] -
+            print((msg["data"]["E"] -
                     strategy.start_listen_key))
-            if (msg["data"]["k"]["t"] -
-                    strategy.start_listen_key) >= 55 * 60 * 1000:
+            if (msg["data"]["E"] -
+                    strategy.start_listen_key) >= 3 * 60 * 1000:
                 try:
                     strategy.futures_stream_keepalive(strategy.listen_key)
                 except BinanceAPIException as e:
