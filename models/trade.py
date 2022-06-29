@@ -7,6 +7,7 @@ class Trade:
     entry_date: float
     entry_price: float
     contract: float
+    orderid: int = None
     order_type: str = "MARKET"
     entry_signal: str = None
     exit_date: float = None
