@@ -1,4 +1,5 @@
 from binance import ThreadedWebsocketManager
+from binance.exceptions import BinanceAPIException
 import asyncio
 
 class ThreadedWebsocketManager(ThreadedWebsocketManager):
@@ -9,6 +10,8 @@ class ThreadedWebsocketManager(ThreadedWebsocketManager):
                     msg = await asyncio.wait_for(s.recv(), 3)
                 except asyncio.TimeoutError:
                     msg = {"data":{'e':'connection error'}}
+                except BinanceAPIException as e:
+                    msg = {"data":{'e':"stream live error"}}
 
                 if not msg:
                     continue

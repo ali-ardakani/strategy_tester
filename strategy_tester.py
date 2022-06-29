@@ -54,7 +54,8 @@ class StrategyTester:
         ----------
         backtest()
     """
-
+    _commission = 0.0
+    
     def set_init(strategy):
         strategy._contract = False
         strategy._cash = 10000
@@ -63,7 +64,6 @@ class StrategyTester:
         strategy.short = "short"
 
         strategy.interval = "15m"
-        strategy._commission = 0.0
         # Amount of commission paid
         strategy.commission_paid = 0
         strategy.current_candle = None

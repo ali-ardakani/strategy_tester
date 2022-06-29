@@ -311,6 +311,9 @@ class User(Client, Strategy):
                     f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 strategy._send_message(msg)
                 strategy.connection_internet = False
+        elif msg["data"]["e"] == "stream live error":
+            strategy.threaded_websocket_manager.stop()
+            strategy._validate_data(strategy.data)
         else:
             if not strategy.connection_internet:
                 strategy.connection_internet = True
@@ -324,15 +327,16 @@ class User(Client, Strategy):
             # Check difference between date of
             # current candle and date of start_listen_key
             # equal or greater than 55 min
+            print((msg["data"]["k"]["t"] -
+                    strategy.start_listen_key))
             if (msg["data"]["k"]["t"] -
                     strategy.start_listen_key) >= 55 * 60 * 1000:
                 try:
                     strategy.futures_stream_keepalive(strategy.listen_key)
                 except BinanceAPIException as e:
                     if "This listenKey does not exist." in e.message:
-                        strategy.listen_key = strategy.futures_stream_get_listen_key(
-                        )
-                        strategy.start_listen_key = msg["data"]["k"]["t"]
+                        strategy.threaded_websocket_manager.stop()
+                        strategy._validate_data(strategy.data)
 
         elif msg["data"]["e"] == "listenKeyExpired":
             # Get new listen key and restart stream live account
@@ -340,9 +344,8 @@ class User(Client, Strategy):
                 strategy.futures_stream_keepalive(strategy.listen_key)
             except BinanceAPIException as e:
                 if "This listenKey does not exist." in e.message:
-                    strategy.listen_key = strategy.futures_stream_get_listen_key(
-                    )
-                    strategy.start_listen_key = msg["data"]["E"]
+                    strategy.threaded_websocket_manager.stop()
+                    strategy._validate_data(strategy.data)
         elif msg["data"]["e"] == "MARGIN_CALL":
             # Convert int time to datetime
             event_time = pd.to_datetime(msg["data"]["E"], unit="ms")
