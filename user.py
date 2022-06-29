@@ -307,22 +307,22 @@ class User(Client, Strategy):
         """
         if msg["data"]["e"] == "connection error":
             if strategy.connection_internet:
-                msg = "Disconnected from the internet at \n"\
+                txt = "Disconnected from the internet at \n"\
                     f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                strategy._send_message(msg)
+                strategy._send_message(txt)
                 strategy.connection_internet = False
         elif msg["data"]["e"] == "stream live error":
-            msg = "Stream live error at \n"\
+            txt = "Stream live error at \n"\
                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            strategy._send_message(msg)
+            strategy._send_message(txt)
             strategy.threaded_websocket_manager.stop()
             strategy._validate_data(strategy.data)
         else:
             if not strategy.connection_internet:
                 strategy.connection_internet = True
-                msg = "Connected to the internet at \n"\
+                txt = "Connected to the internet at \n"\
                     f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                strategy._send_message(msg)
+                strategy._send_message(txt)
 
         
         if msg["stream"] == strategy.stream:
