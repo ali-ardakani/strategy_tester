@@ -335,6 +335,7 @@ class User(Client, Strategy):
             if (msg["data"]["E"] -
                     strategy.start_listen_key) >= 3 * 60 * 1000:
                 try:
+                    print("keeplive")
                     strategy.futures_stream_keepalive(strategy.listen_key)
                 except BinanceAPIException as e:
                     if "This listenKey does not exist." in e.message:
