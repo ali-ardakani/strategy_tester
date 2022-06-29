@@ -333,7 +333,7 @@ class User(Client, Strategy):
             print((msg["data"]["E"] -
                     strategy.start_listen_key))
             if (msg["data"]["E"] -
-                    strategy.start_listen_key) >= 3 * 60 * 1000:
+                    strategy.start_listen_key) >= 1 * 60 * 1000:
                 try:
                     print("keeplive")
                     strategy.futures_stream_keepalive(strategy.listen_key)
