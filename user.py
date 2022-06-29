@@ -36,6 +36,8 @@ class User(Client, Strategy):
                  interval: str,
                  leverage: int,
                  margin_type: str,
+                 min_usd: float = 25,
+                 max_usd: float = 100,  
                  chunk: bool = False,
                  custom_amount_cash: float = None,
                  keep_time_limit_chunk: float = "1M",
@@ -60,6 +62,8 @@ class User(Client, Strategy):
         strategy.start_trade = False
         strategy.connection_internet = True
         strategy.telegram_bot = telegram_bot
+        strategy.min_usd = min_usd
+        strategy.max_usd = max_usd
         strategy.chunk = chunk
         if strategy.open_positions != []:
             msg = f"{strategy.primary_pair}{strategy.secondary_pair}"\
