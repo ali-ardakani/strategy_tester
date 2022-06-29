@@ -337,6 +337,7 @@ class User(Client, Strategy):
                 try:
                     print("keeplive")
                     strategy.futures_stream_keepalive(strategy.listen_key)
+                    strategy.start_listen_key = msg["data"]["E"]
                 except BinanceAPIException as e:
                     if "This listenKey does not exist." in e.message:
                         msg = "Stream live error at \n"\
@@ -348,7 +349,9 @@ class User(Client, Strategy):
         elif msg["data"]["e"] == "listenKeyExpired":
             # Get new listen key and restart stream live account
             try:
+                print("listenKeyExpired")
                 strategy.futures_stream_keepalive(strategy.listen_key)
+                strategy.start_listen_key = msg["data"]["E"]
             except BinanceAPIException as e:
                 if "This listenKey does not exist." in e.message:
                     msg = "Stream live error at \n"\
