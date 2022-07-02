@@ -55,7 +55,7 @@ class Manager:
     def stop(self):
         self.updater.stop()
 
-    def _check_connect_on(self, function:callable, **kwargs):
+    def _check_connect_on(self, function: callable, **kwargs):
         while True:
             try:
                 function(**kwargs)
@@ -67,26 +67,24 @@ class Manager:
         if self.channel_id is None:
             raise ValueError("Channel ID is not set")
 
-        thread = Thread(
-            target=self._check_connect_on,
-            kwargs={
-                "function": self.bot.send_message,
-                "chat_id": self.channel_id,
-                "text": text
-                })
+        thread = Thread(target=self._check_connect_on,
+                        kwargs={
+                            "function": self.bot.send_message,
+                            "chat_id": self.channel_id,
+                            "text": text
+                        })
         thread.start()
 
     def send_image_to_channel(self, img_bytes: bytes, caption: str):
         if self.channel_id is None:
             raise ValueError("Channel ID is not set")
-        thread = Thread(
-            target=self._check_connect_on,
-            kwargs={
-                "function": self.bot.send_photo,
-                "chat_id": self.channel_id,
-                "photo": img_bytes,
-                "caption": caption
-                })
+        thread = Thread(target=self._check_connect_on,
+                        kwargs={
+                            "function": self.bot.send_photo,
+                            "chat_id": self.channel_id,
+                            "photo": img_bytes,
+                            "caption": caption
+                        })
         thread.start()
 
     def _send_message_to_bot(self, update: Update, context: CallbackContext,
@@ -112,8 +110,8 @@ class Manager:
         self.updater.dispatcher.add_handler(
             CommandHandler("stop_entry_short", self._stop_enter_short))
         self.updater.dispatcher.add_handler(
-            CommandHandler("stop_not_close_position",
-                           self._stop_not_close_position))
+            CommandHandler("stop_keep_position",
+                           self._stop_keep_position))
         self.updater.dispatcher.add_handler(
             CommandHandler("stop_close_position", self._stop_close_position))
         self.updater.dispatcher.add_handler(
@@ -141,8 +139,8 @@ class Manager:
             "/stop_entry_short - stop user enter short.\n"\
             "/start_entry_long - start user enter long.\n"\
             "/start_entry_short - start user enter short.\n"\
-            "/stop_not_close_position - Stop the user"\
-            " and not close the position.\n"\
+            "/stop_keep_position - Stop the user and \n"\
+            "keep the position open (don't close it).\n"\
             "/stop_close_position - Stop the user and close the position.\n"\
             "/stop_close_position_with_close_condition -"\
             "Stop the user and close the position with close condition.\n"\
@@ -173,8 +171,11 @@ class Manager:
                 "please use /stop_entry_long and /stop_entry_short."
             self.send_message_to_channel(msg)
             update.message.reply_text(text="User is running.")
-            
-    def _restart(self, update: Update, context: CallbackContext, permission_code: bool = False):
+
+    def _restart(self,
+                 update: Update,
+                 context: CallbackContext,
+                 permission_code: bool = False):
         """Restart the user."""
         self._permission(update, context, self._restart)
         if permission_code:
@@ -190,7 +191,7 @@ class Manager:
                 "please use /stop_entry_long and /stop_entry_short."
             self.send_message_to_channel(msg)
             update.message.reply_text(text="User Restarted.")
-        
+
     def _stop_enter_long(self,
                          update: Update,
                          context: CallbackContext,
@@ -243,12 +244,12 @@ class Manager:
                 "Strategy have permission to enter short position."
             self.send_message_to_channel(msg)
 
-    def _stop_not_close_position(self,
+    def _stop_keep_position(self,
                                  update: Update,
                                  context: CallbackContext,
                                  permission_code: bool = False):
         """Stop the open positions and not close the position."""
-        self._permission(update, context, self._stop_not_close_position)
+        self._permission(update, context, self._stop_keep_position)
 
         if permission_code:
             self._stop(update, context)
@@ -355,7 +356,7 @@ class Manager:
                 text="Closed positions: {}".format(closed_positions))
         else:
             update.message.reply_text(text="No closed positions.")
-            
+
     def _current_kline(self, update: Update, context: CallbackContext):
         """Get the current kline."""
         kline = self.user.current_kline
@@ -429,12 +430,13 @@ class Manager:
 
     def _permission(self, update, context, func):
         """Check the permission."""
+        print("Enter to _permission")
         if not self._get_secret_code:
+            print("Enter to condition")
             self.memory_function = func
             if update.message.chat_id in self.licensed.id.values:
                 # For get secret code from user(in _reply function)
                 self._get_secret_code = True
-
                 # Check secret code of user in the database
                 if self._get_secret_key(update.message.chat_id):
                     update.message.reply_text(
