@@ -179,18 +179,9 @@ class Manager:
         """Restart the user."""
         self._permission(update, context, self._restart)
         if permission_code:
-            user = self.user.__class__
-            del self.user
-            self.user = user(telegram_bot=self, **self.kwargs)
-            self.user._exit = True
-            self.user._entry = True
-            self.user._permission_long = True
-            self.user._permission_short = True
-            self.user.run()
-            msg = "Strategy is started!"\
-                "\nStrategy have permission to enter long and short."\
-                "If you want to prevent the strategy to enter long and short,"\
-                "please use /stop_entry_long and /stop_entry_short."
+            self.user.threaded_websocket_manager.stop()
+            self.user.threaded_websocket_manager.start()
+            msg = "User is restarted! Please check with /current_kline command."
             self.send_message_to_channel(msg)
             update.message.reply_text(text="User Restarted.")
 
