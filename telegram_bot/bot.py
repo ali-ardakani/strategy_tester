@@ -42,6 +42,7 @@ class Manager:
         self.bot = Bot(token=self.token)
 
         # Set the user
+        self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
 
         # Memory function
@@ -101,6 +102,8 @@ class Manager:
         self.updater.dispatcher.add_handler(
             CommandHandler("start", self._start))
         self.updater.dispatcher.add_handler(
+            CommandHandler("restart", self._restart))
+        self.updater.dispatcher.add_handler(
             CommandHandler("stop_entry_long", self._stop_enter_long))
         self.updater.dispatcher.add_handler(
             CommandHandler("start_entry_long", self._start_entry_long))
@@ -131,7 +134,8 @@ class Manager:
 
     def _help(self, update: Update, context: CallbackContext):
         """Help the user."""
-        text = "/start - Start or Restart the user.\n"\
+        text = "/start - Start the user.\n"\
+            "/restart - Restart the user.\n"\
             "/authorization - Authorization the user.\n"\
             "/stop_entry_long - stop user enter long.\n"\
             "/stop_entry_short - stop user enter short.\n"\
@@ -169,7 +173,24 @@ class Manager:
                 "please use /stop_entry_long and /stop_entry_short."
             self.send_message_to_channel(msg)
             update.message.reply_text(text="User is running.")
-
+            
+    def _restart(self, update: Update, context: CallbackContext, permission_code: bool = False):
+        """Restart the user."""
+        self._permission(update, context, self._restart)
+        if permission_code:
+            self.user = self.user.__class__(telegram_bot=self, **self.kwargs)
+            self.user._exit = True
+            self.user._entry = True
+            self.user._permission_long = True
+            self.user._permission_short = True
+            self.user.run()
+            msg = "Strategy is started!"\
+                "\nStrategy have permission to enter long and short."\
+                "If you want to prevent the strategy to enter long and short,"\
+                "please use /stop_entry_long and /stop_entry_short."
+            self.send_message_to_channel(msg)
+            update.message.reply_text(text="User Restarted.")
+        
     def _stop_enter_long(self,
                          update: Update,
                          context: CallbackContext,

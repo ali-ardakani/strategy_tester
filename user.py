@@ -153,6 +153,7 @@ class User(Client, Strategy):
         else:
             open_positions = strategy.futures_position_information(
                 symbol=strategy.symbol)
+            open_orders = [order for order in strategy.futures_get_open_orders() if order["symbol"] == strategy.symbol]
             strategy._in_bot = True
             if open_positions[0]:
                 if float(open_positions[0]["positionAmt"]) == 0:
@@ -166,6 +167,19 @@ class User(Client, Strategy):
                     entry_signal="long"
                     if position["positionAmt"][0] != "-" else "short",
                     contract=abs(float(position["positionAmt"])),
+                    comment="This is the first trade after restart bot.")
+                strategy._open_positions.append(trade)
+            for order in open_orders:
+                trade = Trade(
+                    orderid=order["orderId"],
+                    order_type=order["type"],
+                    type="long"
+                    if order["side"].lower() == "buy" else "short",
+                    entry_date=order["time"],
+                    entry_price=float(order["price"]),
+                    entry_signal="long"
+                    if order["side"].lower() == "buy" else "short",
+                    contract=abs(float(order["origQty"])),
                     comment="This is the first trade after restart bot.")
                 strategy._open_positions.append(trade)
             return strategy._open_positions
@@ -523,8 +537,8 @@ class User(Client, Strategy):
         """
         Convert kline data to pandas dataframe
         """
-        # if strategy.start_trade:
-        #     strategy._convert_expired_orders_limit()
+        if strategy.start_trade:
+            strategy._convert_expired_orders_limit()
         frame = pd.DataFrame([msg['k']])
         frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
         frame.columns = [
@@ -602,7 +616,6 @@ class User(Client, Strategy):
                                       stop=stop,
                                       comment=comment,
                                       current_candle=current_candle):
-    
             # If there is no open position,
             # then open position
             # (Only used for having 1 open position at the same time)
@@ -617,77 +630,78 @@ class User(Client, Strategy):
                 side = "BUY"
             elif direction == "short":
                 side = "SELL"
-
-            if strategy.min_usd <= quantity * current_candle["close"]:        
+            if strategy.minQty <= quantity * current_candle["close"]:        
                 if strategy.keep_time_limit_chunk is not None and \
                     limit is None:            
                     entry_price = strategy.free_secondary * percent_of_assets * 0.999
                     if entry_price >= strategy.max_usd:                
                         chunks = strategy.decomposition(entry_price)
-                        print(chunks)
                         for chunk in chunks[1:]:
                             chunk = float(
                                 str(chunk / current_candle["close"])[:5])
-                            multiplier = 0.1 / len(chunks)
+                            multiplier = 0.1 / (len(chunks)-1)
+                            if direction == "short":
+                                multiplier = -multiplier
+                            _limit = (1-multiplier) * current_candle["close"]
+                            _limit = float(f"{_limit:.1f}")
                             strategy.entry(
                                 signal=signal,
                                 direction=direction,
                                 percent_of_assets=percent_of_assets,
                                 qty=chunk,
-                                limit=(1-multiplier) * current_candle["close"],
+                                limit=_limit,
                                 stop=stop,
                                 comment=comment)
                     
                         quantity = float(
                             str(chunks[0] / current_candle["close"])[:5])
-            print(quantity)
-            try:
-                if limit is None:
-                    order = strategy.futures_create_order(
-                        symbol=strategy.symbol,
-                        side=side,
-                        type="MARKET",
-                        quantity=quantity,
-                        newOrderRespType='RESULT')
-                else:
-                    order = strategy.futures_create_order(
-                        symbol=strategy.symbol,
-                        side=side,
-                        type="LIMIT",
-                        quantity=quantity,
-                        price=limit,
-                        newOrderRespType='RESULT',
-                        timeInForce="GTC")
-                    print(order)
+            
+                try:
+                    if limit is None:
+                        order = strategy.futures_create_order(
+                            symbol=strategy.symbol,
+                            side=side,
+                            type="MARKET",
+                            quantity=quantity,
+                            newOrderRespType='RESULT')
+                    else:
+                        order = strategy.futures_create_order(
+                            symbol=strategy.symbol,
+                            side=side,
+                            type="LIMIT",
+                            quantity=quantity,
+                            price=limit,
+                            newOrderRespType='RESULT',
+                            timeInForce="GTC")
 
-                trade = Trade(
-                    orderid=order["orderId"],
-                    type=direction,
-                    entry_date=order["updateTime"],
-                    entry_price=order["price"],
-                    entry_signal=signal,
-                    contract=quantity,
-                    order_type="MARKET" if limit is None else "LIMIT",
-                    comment=comment)
+                    trade = Trade(
+                        orderid=order["orderId"],
+                        type=direction,
+                        entry_date=order["updateTime"],
+                        entry_price=current_candle["close"],
+                        entry_signal=signal,
+                        contract=quantity,
+                        order_type="MARKET" if limit is None else "LIMIT",
+                        comment=comment)
 
-                close_time = current_candle.close_time
-                plot = strategy._plot_to_channel(trade)
-                caption = f"#Open#{direction}#{signal}\n\n\n"\
-                    f"Open {direction} in"\
-                    f"{strategy._round_time(close_time)}"\
-                    f"\n\nOpen Price: {trade.entry_price}"\
-                    f"\nContract: {quantity}"\
-                    f"\nComment: {comment}"
-                strategy._send_image(plot, caption=caption)
+                    close_time = current_candle.close_time
+                    plot = strategy._plot_to_channel(trade)
+                    caption = f"#Open#{direction}#{signal}\n\n\n"\
+                        f"Open {direction} in"\
+                        f"{strategy._round_time(close_time)}"\
+                        f"\n\nOpen Price: {trade.entry_price}"\
+                        f"\nContract: {quantity}"\
+                        f"\nComment: {comment}"
+                    # strategy._send_image(plot, caption=caption)
 
-                strategy._open_positions.append(trade)
-            except BinanceAPIException as e:
-                msg = "Error in Open Position\n"\
-                    f"\nSymbol: {strategy.symbol}"\
-                    f"\nSide: {side}\nQuantity: {quantity}"\
-                    f"\nEntry Price: {current_candle['close']}"\
-                    f"\nError: {e}"
-                strategy._send_message(msg)
+                    strategy._open_positions.append(trade)
+                except BinanceAPIException as e:
+                    msg = "Error in Open Position\n"\
+                        f"\nSymbol: {strategy.symbol}"\
+                        f"\nSide: {side}\nQuantity: {quantity}"\
+                        f"\nEntry Price: {current_candle['close']}"\
+                        f"\nError: {e}"
+                    strategy._send_message(msg)
 
     def _permission_entry(strategy, **kwargs):
         """Check if the user has permission to open a position"""
@@ -718,6 +732,7 @@ class User(Client, Strategy):
                     f"\nEntry Date: {entry_date}"\
                     f"\nEntry Signal: {kwargs['signal']}"\
                     f"\nComment: {kwargs['comment']}"
+                print(msg)
                 strategy._send_message(msg)
                 return False
             else:
@@ -885,10 +900,11 @@ class User(Client, Strategy):
         primary = primary.upper()
         secondary = secondary.upper()
         symbol = primary + secondary
-        list_of_symbols = strategy.get_exchange_info()["symbols"]
+        list_of_symbols = strategy.futures_exchange_info()["symbols"]
         try:
-            next(item for item in list_of_symbols if item["symbol"] == symbol)
+            info = next(item for item in list_of_symbols if item["symbol"] == symbol)
             strategy.symbol = symbol
+            strategy.minQty = float(next(item for item in info["filters"] if item["filterType"] == "MARKET_LOT_SIZE")["minQty"])
             return primary, secondary
         except StopIteration:
             err = f"The pair {symbol} is not supported."\
@@ -1174,32 +1190,32 @@ class User(Client, Strategy):
         Convert expired limit orders to market orders.
         """
         for order in self._open_positions:
-            if order.type == "limit" and\
+            if order.order_type.lower() == "limit" and\
                 (self.current_time - order.entry_date) > self.keep_time_limit_chunk:
                 try:
-                    self.futures_cancel_order(order.orderid, symbol=self.symbol)
+                    self.futures_cancel_order(orderId=order.orderid, symbol=self.symbol)
                     # Delete order from open positions
                     self._open_positions.remove(order)
                     # Create market order
                     new_order = self.futures_create_order(symbol=self.symbol,
-                                                side="BUY" if order.direction == "long" else "SELL",
-                                                type="market",
+                                                side="BUY" if order.type.lower() == "long" else "SELL",
+                                                type="MARKET",
                                                 quantity=order.contract)
                     
                     trade = Trade(
                         orderid=new_order["orderId"],
-                        type=order.direction,
+                        type=order.type,
                         entry_date=new_order["updateTime"],
                         entry_price=new_order["price"],
                         entry_signal=order.signal,
-                        contract=order.quantity,
+                        contract=order.contract,
                         order_type="MARKET",
                         comment=order.comment)
 
                     close_time = trade.entry_date
                     plot = self._plot_to_channel(trade)
-                    caption = f"#Open#{order.direction}#{order.signal}\n\n\n"\
-                        f"Open {order.direction} in"\
+                    caption = f"#Open#{order.type}#{order.signal}\n\n\n"\
+                        f"Open {order.type} in"\
                         f"{self._round_time(close_time)}"\
                         f"\n\nOpen Price: {trade.entry_price}"\
                         f"\nContract: {order.contract}"\
