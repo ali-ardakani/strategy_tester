@@ -429,7 +429,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         In this function, you can get backtest result of just long.
         
         Note:
-            This function should only be called when the strategy is running.
+            This function should only be called when the strategy has been ran.
         """
         trades = self.list_of_trades()
         trades_long = trades[trades.type == "long"]

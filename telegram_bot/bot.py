@@ -179,7 +179,7 @@ class Manager:
         """Restart the user."""
         self._permission(update, context, self._restart)
         if permission_code:
-            self.user.threaded_websocket_manager.stop()
+            self.user.threaded_websocket_manager.stop_client()
             self.user.threaded_websocket_manager.start()
             msg = "User is restarted! Please check with /current_kline command."
             self.send_message_to_channel(msg)
