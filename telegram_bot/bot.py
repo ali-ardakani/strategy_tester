@@ -179,8 +179,9 @@ class Manager:
         """Restart the user."""
         self._permission(update, context, self._restart)
         if permission_code:
+            user = self.user.__class__
             del self.user
-            self.user = self.user.__class__(telegram_bot=self, **self.kwargs)
+            self.user = user(telegram_bot=self, **self.kwargs)
             self.user._exit = True
             self.user._entry = True
             self.user._permission_long = True
