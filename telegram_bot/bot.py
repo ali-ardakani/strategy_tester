@@ -160,10 +160,6 @@ class Manager:
         self._permission(update, context, self._start)
 
         if permission_code:
-            self.user._exit = True
-            self.user._entry = True
-            self.user._permission_long = True
-            self.user._permission_short = True
             self.user.run()
             msg = "Strategy is started!"\
                 "\nStrategy have permission to enter long and short."\
@@ -179,11 +175,9 @@ class Manager:
         """Restart the user."""
         self._permission(update, context, self._restart)
         if permission_code:
-            self.user.threaded_websocket_manager.stop_client()
-            self.user.threaded_websocket_manager.start()
-            msg = "User is restarted! Please check with /current_kline command."
-            self.send_message_to_channel(msg)
-            update.message.reply_text(text="User Restarted.")
+            self.user.restart_streams()
+            self._start(update, context, True)
+            
 
     def _stop_enter_long(self,
                          update: Update,

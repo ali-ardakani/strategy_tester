@@ -879,9 +879,13 @@ class User(Client, Strategy):
         """ Round down to the nearest 'base' """
         return int(base * math.floor(float(x) / base))
 
-    def run(strategy):
+    def run(self):
         """Run the strategy."""
-        strategy.start_trade = True
+        self._exit = True
+        self._entry = True
+        self._permission_long = True
+        self._permission_short = True
+        self.start_trade = True
 
     def set_data(self, data):
         """This function used in Strategy class
@@ -1231,3 +1235,9 @@ class User(Client, Strategy):
                         f"\nEntry Price: {order.entry_price}"\
                         f"\nError: {e}"
                     self._send_message(msg)
+                    
+    def restart_streams(self):
+        """
+        Restart client and threads.
+        """
+        self._validate_data(data=None)
