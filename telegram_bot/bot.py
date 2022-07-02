@@ -179,6 +179,8 @@ class Manager:
         """Restart the user."""
         self._permission(update, context, self._restart)
         if permission_code:
+            self.user.threaded_websocket_manager.stop()
+            self.user.threaded_websocket_manager.stop_client()
             self.user = self.user.__class__(telegram_bot=self, **self.kwargs)
             print("User is restarted.")
             self.user._exit = True

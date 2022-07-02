@@ -195,6 +195,7 @@ class User(Client, Strategy):
         kline = kline.iloc[0]
         self._current_kline = kline
         
+        
     @property
     def current_time(self):
         return time() * 1000
