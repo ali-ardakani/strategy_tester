@@ -180,6 +180,7 @@ class Manager:
         self._permission(update, context, self._restart)
         if permission_code:
             self.user = self.user.__class__(telegram_bot=self, **self.kwargs)
+            print("User is restarted.")
             self.user._exit = True
             self.user._entry = True
             self.user._permission_long = True
