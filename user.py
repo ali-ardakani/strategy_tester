@@ -248,10 +248,10 @@ class User(Client, Strategy):
                 strategy.get_historical_klines(
                     strategy.symbol,
                     strategy.interval,
-                    start_str=f"{num}{period} ago UTC")).iloc[:, :7]
+                    start_str=f"{num}{period} ago UTC")).iloc[:, :8]
 
         remind_kline.columns = [
-            "date", "open", "high", "low", "close", "volume", "close_time"
+            "date", "open", "high", "low", "close", "volume", "close_time", "num_trades"
         ]
         remind_kline.index = remind_kline["date"]
         remind_kline = remind_kline.astype(float)
