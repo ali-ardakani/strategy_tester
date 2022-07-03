@@ -45,7 +45,7 @@ class Manager:
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
         user.__bases__ = (Strategy, )
-        self.backtest = self.user()
+        self.backtest = user()
 
         # Memory function
         self.memory_function = None
