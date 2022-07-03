@@ -45,9 +45,8 @@ class Manager:
         # Set the user
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
-        # user2 = deepcopy(user)
-        # user2.__bases__ = (Strategy, )
-        # self.backtest = user2()
+        self.backtest = self._convert_user_to_strategy(user)()
+        
 
         # Memory function
         self.memory_function = None
@@ -365,6 +364,7 @@ class Manager:
 
     def _backtest_result(self, update: Update, context: CallbackContext):
         """Get the backtest result."""
+        self.backtest.run()
         result = self.backtest.result().to_string()
         update.message.reply_text(text=result)
 
@@ -517,3 +517,10 @@ class Manager:
     def _verify_code(self, secret_key, code):
         """ Verify the code """
         return pyotp.totp.TOTP(secret_key).verify(code)
+    
+    @staticmethod
+    def _convert_user_to_strategy(user):
+        """Change parents user to strategy."""
+        class Strategy_(Strategy, user):
+            pass
+        return Strategy_
