@@ -522,7 +522,7 @@ class Manager:
     @staticmethod
     def _create_copy_class(cls):
         """Create a copy of the class."""
-        cls = pickle.loads(pickle.dumps(cls))
-        cls.__bases__ = (Strategy,)
-        return cls
+        cls_ = pickle.loads(pickle.dumps(cls))
+        cls_.__bases__ = (Strategy, )
+        return cls_
         
