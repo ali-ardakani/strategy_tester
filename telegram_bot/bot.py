@@ -521,6 +521,5 @@ class Manager:
     @staticmethod
     def _convert_user_to_strategy(user):
         """Change parents user to strategy."""
-        class Strategy_(Strategy, user):
-            pass
-        return Strategy_
+        user.__bases__ = (Strategy, )
+        return user
