@@ -1,5 +1,3 @@
-from concurrent.futures import thread
-from copy import deepcopy
 import io
 import os
 
@@ -13,7 +11,6 @@ from telegram.ext.messagehandler import MessageHandler
 from telegram.ext.updater import Updater
 from telegram.update import Update
 from telegram.vendor.ptb_urllib3.urllib3.exceptions import ConnectTimeoutError
-from strategy_tester.commands import connect_on
 from threading import Thread
 from strategy_tester import Strategy
 import time
@@ -46,7 +43,7 @@ class Manager:
         # Set the user
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
-        self.backtest = self._create_copy_class(user)()
+        # self.backtest = self._create_copy_class(user)()
         
 
         # Memory function
