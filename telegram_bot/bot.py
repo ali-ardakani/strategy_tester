@@ -1,4 +1,5 @@
 from concurrent.futures import thread
+from copy import deepcopy
 import io
 import os
 
@@ -44,8 +45,9 @@ class Manager:
         # Set the user
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
-        user.__bases__ = (Strategy, )
-        self.backtest = user()
+        user2 = deepcopy(user)
+        user2.__bases__ = (Strategy, )
+        self.backtest = user2()
 
         # Memory function
         self.memory_function = None
@@ -363,7 +365,7 @@ class Manager:
 
     def _backtest_result(self, update: Update, context: CallbackContext):
         """Get the backtest result."""
-        result = self.backtest.result()
+        result = self.backtest.result().to_string()
         update.message.reply_text(text=result)
 
     def _reply(self, update: Update, context: CallbackContext):
