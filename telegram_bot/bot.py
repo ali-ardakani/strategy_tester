@@ -45,9 +45,9 @@ class Manager:
         # Set the user
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
-        user2 = deepcopy(user)
-        user2.__bases__ = (Strategy, )
-        self.backtest = user2()
+        # user2 = deepcopy(user)
+        # user2.__bases__ = (Strategy, )
+        # self.backtest = user2()
 
         # Memory function
         self.memory_function = None
