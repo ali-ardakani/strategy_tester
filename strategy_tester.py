@@ -63,7 +63,7 @@ class StrategyTester:
         strategy.long = "long"
         strategy.short = "short"
 
-        strategy.interval = "15m"
+        strategy.interval = "5m"
         # Amount of commission paid
         strategy.commission_paid = 0
         strategy.current_candle = None
@@ -85,7 +85,7 @@ class StrategyTester:
 
     @property
     def interval(strategy):
-        return strategy._interval
+        return strategy.__dict__.get("_interval", "5m")
 
     @interval.setter
     def interval(strategy, interval):
