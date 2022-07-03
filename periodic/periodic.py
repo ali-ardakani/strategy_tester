@@ -13,11 +13,11 @@ class PeriodicCalc:
     
     
     """
-    def __init__(self, initial_capital:float, trades:pd.DataFrame, data:pd.DataFrame, days:int=None, start_date:str=None, end_date:str=None):
+    def __init__(self, initial_capital:float, trades:pd.DataFrame, data:pd.DataFrame, freq:str=None, start_date:str=None, end_date:str=None):
         self.initial_capital = initial_capital
         self.trades = self._valid_trades(trades)
         self.data = self._valid_data(data)
-        self.days = days if days else len(self.data)
+        self.freq = freq if freq else len(self.data)
         self.start_date = start_date if start_date else None
         self.end_date = end_date if end_date else self.data.date.max() # Get the last date
         self._backtests = {}
@@ -63,7 +63,7 @@ class PeriodicCalc:
         if self.start_date:
             self.data = self.data[self.data.date >= self.start_date]
 
-        steps = self.data.groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
+        steps = self.data.groupby(pd.Grouper(key='date', freq=self.freq))
         for step in steps:
             # Get the trades for the current step
             trades = self._get_trades(data=step[1])
@@ -84,7 +84,7 @@ class PeriodicCalc:
             
     def _grouping(self):
         """Group the data by days"""
-        return self.data.groupby(pd.Grouper(key='date', freq=f'{self.days}D'))
+        return self.data.groupby(pd.Grouper(key='date', freq=self.freq))
     
     def _get_trades(self, data):
         """Get the trades for the given data"""

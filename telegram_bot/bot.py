@@ -5,7 +5,6 @@ import os
 import pandas as pd
 import pyotp
 from qrcode import QRCode, constants
-from strategy_tester import User
 from telegram import Bot
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.ext.commandhandler import CommandHandler, Filters
@@ -25,7 +24,7 @@ class Manager:
     def __init__(self,
                  token: str,
                  channel_id: int,
-                 user: User,
+                 user,
                  path_db: str,
                  use_context: bool = True,
                  licensed: list = None,
@@ -353,7 +352,8 @@ class Manager:
                 f"High: {kline['high']}\n"\
                 f"Low: {kline['low']}\n"\
                 f"Close: {kline['close']}\n"\
-                f"Volume: {kline['volume']}"
+                f"Volume: {kline['volume']}\n"\
+                f"Number of trades: {kline['num_trades']}"
             update.message.reply_text(text=text)
         else:
             update.message.reply_text(text="No current kline.")
@@ -417,9 +417,7 @@ class Manager:
 
     def _permission(self, update, context, func):
         """Check the permission."""
-        print("Enter to _permission")
         if not self._get_secret_code:
-            print("Enter to condition")
             self.memory_function = func
             if update.message.chat_id in self.licensed.id.values:
                 # For get secret code from user(in _reply function)

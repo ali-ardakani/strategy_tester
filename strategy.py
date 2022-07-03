@@ -431,6 +431,9 @@ class Strategy(StrategyTester, IndicatorsParallel):
         Note:
             This function should only be called when the strategy has been ran.
         """
+        self._restart_permission()
+        if self.closed_positions:
+            self.run()
         trades = self.list_of_trades()
         trades_long = trades[trades.type == "long"]
         if trades_long.exit_date.dropna().empty:
@@ -446,6 +449,9 @@ class Strategy(StrategyTester, IndicatorsParallel):
         Note:
             This function should only be called when the strategy is running.
         """
+        self._restart_permission()
+        if self.closed_positions:
+            self.run()
         trades = self.list_of_trades()
         trades_long = trades[trades.type == "long"]
         if trades_long.exit_date.dropna().empty:
@@ -459,6 +465,9 @@ class Strategy(StrategyTester, IndicatorsParallel):
         Note:
             This function should only be called when the strategy is running.
         """
+        self._restart_permission()
+        if self.closed_positions:
+            self.run()
         trades = self.list_of_trades()
         trades_short = trades[trades.type == "short"]
         if trades_short.exit_date.dropna().empty:
@@ -474,6 +483,9 @@ class Strategy(StrategyTester, IndicatorsParallel):
         Note:
             This function should only be called when the strategy is running.
         """
+        self._restart_permission()
+        if self.closed_positions:
+            self.run()
         trades = self.list_of_trades()
         trades_short = trades[trades.type == "short"]
         if trades_short.exit_date.dropna().empty:
@@ -496,6 +508,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         
         self._permission_short = False
         self.run()
+        self._restart_permission()
         return self
     
     def only_short(self) -> "Strategy":
@@ -513,7 +526,15 @@ class Strategy(StrategyTester, IndicatorsParallel):
         """
         self._permission_long = False
         self.run()
+        self._restart_permission()
         return self
+    
+    def _restart_permission(self):
+        """
+        In this function, you can restart the permission of the strategy.
+        """
+        self._permission_long = True
+        self._permission_short = True
     
     def run(strategy):
         """Run the strategy."""

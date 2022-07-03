@@ -5,12 +5,14 @@ import random
 import re
 from time import time
 from typing import Dict, Optional
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from binance import Client
 from binance.exceptions import BinanceAPIException
+from strategy_tester import strategy
 
 from strategy_tester.binance_inheritance import ThreadedWebsocketManager
 from strategy_tester.commands import CalculatorTrade
@@ -331,8 +333,10 @@ class User(Client, Strategy):
         """
         if msg["data"]["e"] == "connection error":
             if strategy.connection_internet:
+                connected = msg["connected_check"]
                 txt = "Disconnected from the internet at \n"\
-                    f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"\
+                    f"Internet connection is {connected}"
                 strategy._send_message(txt)
                 strategy.connection_internet = False
         elif msg["data"]["e"] == "stream live error":
@@ -541,9 +545,9 @@ class User(Client, Strategy):
         if strategy.start_trade:
             strategy._convert_expired_orders_limit()
         frame = pd.DataFrame([msg['k']])
-        frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v'])
+        frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v', 'n'])
         frame.columns = [
-            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume'
+            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume', 'num_trades'
         ]
         frame.index = frame['date']
         frame = frame.astype(float)
@@ -887,7 +891,7 @@ class User(Client, Strategy):
         self._permission_short = True
         self.start_trade = True
 
-    def set_data(self, data):
+    def setdata(self, data):
         """This function used in Strategy class
         but in User class should not do anything."""
         pass

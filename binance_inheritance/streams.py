@@ -1,6 +1,10 @@
+import asyncio
+
 from binance import ThreadedWebsocketManager
 from binance.exceptions import BinanceAPIException
-import asyncio
+from strategy_tester.telegram_bot import internet
+import time
+
 
 class ThreadedWebsocketManager(ThreadedWebsocketManager):
     async def start_listener(self, socket, path: str, callback):
@@ -12,7 +16,14 @@ class ThreadedWebsocketManager(ThreadedWebsocketManager):
                     msg = {"stream": "error", "data":{'e':'connection error'}}
                 except BinanceAPIException:
                     msg = {"stream": "error", "data":{'e':"stream live error"}}
-
+                    
+                if msg["stream"] == "error":
+                    connected = internet()
+                    # Time UTC
+                    # _time = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
+                    msg["connected_check"] = connected
+                    # msg["time_check"] = _time
+                    
                 if not msg:
                     continue
                 callback(msg)

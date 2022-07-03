@@ -239,7 +239,7 @@ class StrategyTester:
             The data that you want to test the strategy with.
         """
         if data is None:
-            data = DataHandler(interval=strategy.interval).data
+            data = DataHandler(interval=strategy.interval, months=1).data
         else:
             data = DataHandler(data=data).data
         # data = data.reset_index(drop=True)
@@ -430,7 +430,7 @@ class StrategyTester:
         sheet.worksheet.append_rows(results)
 
     def periodic_calc(strategy,
-                      days: int = None,
+                      freq: str = None,
                       start_date: str = None,
                       end_date: str = None,
                       sheet: Sheet = None) -> dict:
@@ -453,8 +453,8 @@ class StrategyTester:
         results : dict
             The periodic returns of the strategy.       
         """
-        if days and not isinstance(days, int):
-            raise ValueError("The days must be an integer.")
+        if freq and not isinstance(freq, str):
+            raise ValueError("The days must be an string(e.g. '1D', '1W', '1M', '1Y').")
 
         trades = pd.DataFrame(strategy.closed_positions)
         if trades.empty:
@@ -462,7 +462,7 @@ class StrategyTester:
         periodic_obj = PeriodicCalc(initial_capital=strategy._initial_capital,
                                     trades=trades,
                                     data=strategy.data,
-                                    days=days,
+                                    freq=freq,
                                     start_date=start_date,
                                     end_date=end_date)
 
