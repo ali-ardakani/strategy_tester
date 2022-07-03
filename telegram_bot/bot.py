@@ -17,6 +17,7 @@ from strategy_tester.commands import connect_on
 from threading import Thread
 from strategy_tester import Strategy
 import time
+import pickle
 
 
 class Manager:
@@ -45,7 +46,7 @@ class Manager:
         # Set the user
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
-        self.backtest = self._convert_user_to_strategy(user)()
+        self.backtest = self._create_copy_class(user)()
         
 
         # Memory function
@@ -519,7 +520,8 @@ class Manager:
         return pyotp.totp.TOTP(secret_key).verify(code)
     
     @staticmethod
-    def _convert_user_to_strategy(user):
-        """Change parents user to strategy."""
-        user.__bases__ = (Strategy, )
-        return user
+    def _create_copy_class(cls):
+        """Create a copy of the class."""
+        return type(f"CopyOf{cls.__name__}", (Strategy,), {})
+        # obj = pickle.loads(pickle.dumps(cls))
+        
