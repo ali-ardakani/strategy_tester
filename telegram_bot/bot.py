@@ -14,6 +14,7 @@ from telegram.update import Update
 from telegram.vendor.ptb_urllib3.urllib3.exceptions import ConnectTimeoutError
 from strategy_tester.commands import connect_on
 from threading import Thread
+from strategy_tester import Strategy
 import time
 
 
@@ -43,6 +44,8 @@ class Manager:
         # Set the user
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
+        user.__bases__ = (Strategy, )
+        self.backtest = self.user()
 
         # Memory function
         self.memory_function = None
@@ -109,8 +112,7 @@ class Manager:
         self.updater.dispatcher.add_handler(
             CommandHandler("stop_entry_short", self._stop_enter_short))
         self.updater.dispatcher.add_handler(
-            CommandHandler("stop_keep_position",
-                           self._stop_keep_position))
+            CommandHandler("stop_keep_position", self._stop_keep_position))
         self.updater.dispatcher.add_handler(
             CommandHandler("stop_close_position", self._stop_close_position))
         self.updater.dispatcher.add_handler(
@@ -126,6 +128,8 @@ class Manager:
             CommandHandler("open_positions", self._open_positions))
         self.updater.dispatcher.add_handler(
             CommandHandler("close_positions", self._closed_positions))
+        self.updater.dispatcher.add_handler(
+            CommandHandler("backtest_result", self._backtest_result))
         self.updater.dispatcher.add_handler(
             MessageHandler(Filters.text, self._reply))
 
@@ -176,7 +180,6 @@ class Manager:
         if permission_code:
             self.user.restart_streams()
             self._start(update, context, True)
-            
 
     def _stop_enter_long(self,
                          update: Update,
@@ -231,9 +234,9 @@ class Manager:
             self.send_message_to_channel(msg)
 
     def _stop_keep_position(self,
-                                 update: Update,
-                                 context: CallbackContext,
-                                 permission_code: bool = False):
+                            update: Update,
+                            context: CallbackContext,
+                            permission_code: bool = False):
         """Stop the open positions and not close the position."""
         self._permission(update, context, self._stop_keep_position)
 
@@ -357,6 +360,11 @@ class Manager:
             update.message.reply_text(text=text)
         else:
             update.message.reply_text(text="No current kline.")
+
+    def _backtest_result(self, update: Update, context: CallbackContext):
+        """Get the backtest result."""
+        result = self.backtest.result()
+        update.message.reply_text(text=result)
 
     def _reply(self, update: Update, context: CallbackContext):
         """Reply to the message."""
