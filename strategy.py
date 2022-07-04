@@ -544,3 +544,4 @@ class Strategy(StrategyTester, IndicatorsParallel):
         strategy.start()
         strategy.condition()
         strategy.conditions.apply(strategy.trade, axis=1)
+        

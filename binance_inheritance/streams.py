@@ -12,10 +12,10 @@ class ThreadedWebsocketManager(ThreadedWebsocketManager):
             while self._socket_running[path]:
                 try:
                     msg = await asyncio.wait_for(s.recv(), 3)
-                except asyncio.TimeoutError:
-                    msg = {"stream": "error", "data":{'e':'connection error'}}
-                except BinanceAPIException:
-                    msg = {"stream": "error", "data":{'e':"stream live error"}}
+                except asyncio.TimeoutError as e:
+                    msg = {"stream": "error", "data":{'e':'connection error'}, "error_msg": "timeout error"}
+                except BinanceAPIException as e:
+                    msg = {"stream": "error", "data":{'e':"stream live error"}, "error_msg": e.message}
                     
                 if msg["stream"] == "error":
                     connected = internet()

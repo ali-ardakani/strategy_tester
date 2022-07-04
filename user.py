@@ -334,9 +334,11 @@ class User(Client, Strategy):
         if msg["data"]["e"] == "connection error":
             if strategy.connection_internet:
                 connected = msg["connected_check"]
+                error_msg = msg["error_msg"]
                 txt = "Disconnected from the internet at \n"\
                     f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"\
-                    f"Internet connection is {connected}"
+                    f"Internet connection is {connected}\n"\
+                    f"Error message: {error_msg}"
                 strategy._send_message(txt)
                 strategy.connection_internet = False
         elif msg["data"]["e"] == "stream live error":
