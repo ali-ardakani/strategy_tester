@@ -304,7 +304,7 @@ class Manager:
     def _status(self, update: Update, context: CallbackContext):
         """Check user status."""
         try:
-            open_positions = self.user.open_positions
+            open_positions = len(self.user.open_positions)
             usdt_asset = self.user.free_secondary
             text = f"User is running.\n"\
                 f"Open positions: {open_positions}\n"\
@@ -314,7 +314,8 @@ class Manager:
                 f"Permission to enter long: {self.user._permission_long}\n"\
                 f"Permission to enter short: {self.user._permission_short}\n"\
                 f"Leverage: {self.user.leverage}\n"\
-                f"Margin Type: {self.user.margin_type}"
+                f"Margin Type: {self.user.margin_type}\n"\
+                f"Len Data: {len(self.user.data)}"
             update.message.reply_text(text=text)
         except Exception as e:
             text = "User is not running. "\
