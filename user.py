@@ -531,14 +531,13 @@ class User(Client, Strategy):
 
         # If the last candle in the historical kline
         # is in the websocket data
-        if not strategy.tmp_data[strategy.tmp_data.date ==
+        if not strategy.tmp_data[strategy.tmp_data.date.iloc[-1:] ==
                                  last_kline_data.date].empty:
             # Replace the last candle in the historical kline
             # with the websocket data
             # strategy.data.iloc[-1] = strategy.tmp_data[
             #     strategy.tmp_data.date == last_kline_data.date].iloc[0]
             # Delete the last candle in the historical kline
-            print(strategy.tmp_data)
             
             strategy.data.loc[strategy.data.date ==
                               last_kline_data.date] = strategy.tmp_data[
