@@ -782,7 +782,11 @@ class User(Client, Strategy):
             The comment of the position.
         """
         if strategy._exit:
-            current_candle = strategy.data.loc[strategy.current_candle]
+            try:
+                current_candle = strategy.data.loc[strategy.current_candle]
+            except:
+                print(strategy.data.tail(3))
+                print(strategy.current_candle)
             if strategy.start_trade and strategy.data.date.iloc[
                     -1] == current_candle["date"]:
                 open_position = [
