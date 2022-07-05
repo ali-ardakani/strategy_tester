@@ -1145,7 +1145,7 @@ class User(Client, Strategy):
 
         return numbers
 
-    def _validate_keep_time_limit_chunk(self, keep_time_limit_chunk):
+    def _validate_keep_time_limit_chunk(self, keep_time_limit_chunk: str=None):
         """
         Validate the keep time limit chunk.
         Parameters
@@ -1153,6 +1153,8 @@ class User(Client, Strategy):
         keep_time_limit_chunk : str
             The keep time limit chunk.
         """
+        if not keep_time_limit_chunk:
+            return None
         numerical = float(keep_time_limit_chunk[0])
         letter = keep_time_limit_chunk[1].lower()
         if letter not in ["s", "m", "h", "d"]:
