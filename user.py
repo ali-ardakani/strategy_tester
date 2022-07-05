@@ -550,6 +550,7 @@ class User(Client, Strategy):
             strategy.data,
             strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date]
         ]).iloc[1:]  # Add the websocket data to the historical kline
+        print(strategy.data)
 
     def _human_readable_kline(strategy, msg: dict):
         """
@@ -785,11 +786,7 @@ class User(Client, Strategy):
             The comment of the position.
         """
         if strategy._exit:
-            try:
-                current_candle = strategy.data.loc[strategy.current_candle]
-            except:
-                print(strategy.data.head(3))
-                print(strategy.current_candle)
+            current_candle = strategy.data.loc[strategy.current_candle]
             if strategy.start_trade and strategy.data.date.iloc[
                     -1] == current_candle["date"]:
                 open_position = [
