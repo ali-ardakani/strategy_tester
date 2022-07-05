@@ -873,7 +873,7 @@ class User(Client, Strategy):
                         f"\nEntry Signal: {position.entry_signal}"\
                         f"\nComment: {position.comment}"
 
-                self._send_message(msg)
+                    self._send_message(msg)
 
     def close_positions(strategy):
         """
