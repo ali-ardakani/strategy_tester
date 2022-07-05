@@ -43,7 +43,7 @@ class User(Client, Strategy):
                  max_usd: float = 100,
                  chunk: bool = False,
                  custom_amount_cash: float = None,
-                 keep_time_limit_chunk: float = "1M",
+                 keep_time_limit_chunk: float = None,
                  percent_sl: float = None,
                  requests_params: Optional[Dict[str, str]] = None,
                  tld: str = 'com',
