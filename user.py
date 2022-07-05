@@ -573,6 +573,7 @@ class User(Client, Strategy):
             strategy.open = strategy.data.open
             strategy.close = strategy.data.close
             strategy.volume = strategy.data.volume
+            print(strategy.data)
             if strategy.start_trade:
                 # try:
                 strategy._init_indicator()
@@ -595,7 +596,7 @@ class User(Client, Strategy):
                 #     strategy._send_error_message(e)
 
                 # try:
-                print(strategy.conditions)
+                print(strategy.data)
                 strategy.conditions.apply(strategy.trade, axis=1)
                 # except Exception as e:
                 #     strategy._send_error_message(e)
