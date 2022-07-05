@@ -842,8 +842,8 @@ class User(Client, Strategy):
                             f"Exit Price: {current_candle['close']}\n"\
                             f"Error: {e}"
                         strategy._send_message(msg)
-            else:
-                strategy._check_exit_if_position(current_candle, from_entry)
+            # else:
+            #     strategy._check_exit_if_position(current_candle, from_entry)
 
     def _check_exit_if_position(self, current_candle: pd.Series,
                                 from_entry: str) -> None:
