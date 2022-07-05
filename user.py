@@ -93,7 +93,7 @@ class User(Client, Strategy):
         # Prevent this operation by closing
         # the final websocket candles with the get_historical_klines.
         strategy.tmp_data = pd.DataFrame(columns=[
-            "date", "open", "high", "low", "close", "volume", "close_time"
+            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume', 'num_trades'
         ])
 
         strategy._validate_data(data)
@@ -615,6 +615,7 @@ class User(Client, Strategy):
         comment : str
             The comment of the position.
         """
+        print(strategy.data)
         current_candle = strategy.data.loc[strategy.current_candle]
         if strategy._permission_entry(signal=signal,
                                       direction=direction,
