@@ -217,6 +217,9 @@ class User(Client, Strategy):
         row: DataFrame
             The row of the data that you want to execute the trade for.
         """
+        print(row)
+        print(row.name)
+        print(strategy.data.loc[row.name])
         strategy.current_candle = row.name
         if strategy.percent_sl is not None:
             strategy._sl_onion()
@@ -547,8 +550,6 @@ class User(Client, Strategy):
             strategy.data,
             strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date]
         ]).iloc[1:]  # Add the websocket data to the historical kline
-        
-        strategy.data.index = strategy.data.date
 
     def _human_readable_kline(strategy, msg: dict):
         """
