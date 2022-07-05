@@ -217,9 +217,6 @@ class User(Client, Strategy):
         row: DataFrame
             The row of the data that you want to execute the trade for.
         """
-        print(row)
-        print(row.name)
-        print(strategy.data.loc[row.name])
         strategy.current_candle = row.name
         if strategy.percent_sl is not None:
             strategy._sl_onion()
@@ -541,11 +538,14 @@ class User(Client, Strategy):
             # strategy.data.iloc[-1] = strategy.tmp_data[
             #     strategy.tmp_data.date == last_kline_data.date].iloc[0]
             # Delete the last candle in the historical kline
-            strategy.data = strategy.data.drop(strategy.data.index[-1])
-            strategy.data = pd.concat([strategy.data,
-                                        strategy.tmp_data[
-                                             strategy.tmp_data.date ==
-                                             last_kline_data.date]])
+            print(strategy.tmp_data)
+            
+            strategy.data.loc[strategy.data.date ==
+                              last_kline_data.date] = strategy.tmp_data[
+                                  strategy.tmp_data.date ==
+                                  last_kline_data.date]
+            print(strategy.data.iloc[-2:])
+            
         strategy.data = pd.concat([
             strategy.data,
             strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date]
@@ -1152,7 +1152,8 @@ class User(Client, Strategy):
 
         return numbers
 
-    def _validate_keep_time_limit_chunk(self, keep_time_limit_chunk: str=None):
+    def _validate_keep_time_limit_chunk(self,
+                                        keep_time_limit_chunk: str = None):
         """
         Validate the keep time limit chunk.
         Parameters
