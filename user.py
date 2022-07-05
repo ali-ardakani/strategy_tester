@@ -544,13 +544,11 @@ class User(Client, Strategy):
                               last_kline_data.date] = strategy.tmp_data[
                                   strategy.tmp_data.date ==
                                   last_kline_data.date]
-            print(strategy.data.iloc[-2:])
             
         strategy.data = pd.concat([
             strategy.data,
             strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date]
         ]).iloc[1:]  # Add the websocket data to the historical kline
-        print(strategy.data)
 
     def _human_readable_kline(strategy, msg: dict):
         """
@@ -598,6 +596,7 @@ class User(Client, Strategy):
                 #     strategy._send_error_message(e)
 
                 # try:
+                print(strategy.conditions)
                 strategy.conditions.apply(strategy.trade, axis=1)
                 # except Exception as e:
                 #     strategy._send_error_message(e)
