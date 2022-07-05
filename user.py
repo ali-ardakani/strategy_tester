@@ -28,7 +28,7 @@ class User(Client, Strategy):
     _entry = False
     _permission_long = True
     _permission_short = True
-    
+
     _current_kline = None
 
     def __init__(strategy,
@@ -40,7 +40,7 @@ class User(Client, Strategy):
                  leverage: int,
                  margin_type: str,
                  min_usd: float = 25,
-                 max_usd: float = 100,  
+                 max_usd: float = 100,
                  chunk: bool = False,
                  custom_amount_cash: float = None,
                  keep_time_limit_chunk: float = "1M",
@@ -93,7 +93,8 @@ class User(Client, Strategy):
         # Prevent this operation by closing
         # the final websocket candles with the get_historical_klines.
         strategy.tmp_data = pd.DataFrame(columns=[
-            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume', 'num_trades'
+            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume',
+            'num_trades'
         ])
 
         strategy._validate_data(data)
@@ -155,7 +156,10 @@ class User(Client, Strategy):
         else:
             open_positions = strategy.futures_position_information(
                 symbol=strategy.symbol)
-            open_orders = [order for order in strategy.futures_get_open_orders() if order["symbol"] == strategy.symbol]
+            open_orders = [
+                order for order in strategy.futures_get_open_orders()
+                if order["symbol"] == strategy.symbol
+            ]
             strategy._in_bot = True
             if open_positions[0]:
                 if float(open_positions[0]["positionAmt"]) == 0:
@@ -175,8 +179,7 @@ class User(Client, Strategy):
                 trade = Trade(
                     orderid=order["orderId"],
                     order_type=order["type"],
-                    type="long"
-                    if order["side"].lower() == "buy" else "short",
+                    type="long" if order["side"].lower() == "buy" else "short",
                     entry_date=order["time"],
                     entry_price=float(order["price"]),
                     entry_signal="long"
@@ -185,19 +188,18 @@ class User(Client, Strategy):
                     comment="This is the first trade after restart bot.")
                 strategy._open_positions.append(trade)
             return strategy._open_positions
-        
+
     @property
     def current_kline(self):
         return self._current_kline
-    
+
     @current_kline.setter
     def current_kline(self, kline):
         kline.date = pd.to_datetime(kline.date, unit='ms')
         # Convert dataframe to series
         kline = kline.iloc[0]
         self._current_kline = kline
-        
-        
+
     @property
     def current_time(self):
         return time() * 1000
@@ -243,17 +245,19 @@ class User(Client, Strategy):
             num, period = re.match(r"([0-9]+)([a-z]+)", strategy.interval,
                                    re.I).groups()
             # Get <num> kline data ago
-            num = 1500 * int(num)
+            num = 3000 * int(num)
             remind_kline = pd.DataFrame(
                 strategy.get_historical_klines(
                     strategy.symbol,
                     strategy.interval,
-                    start_str=f"{num}{period} ago UTC")).iloc[:, :8]
+                    start_str=f"{num}{period} ago UTC")).iloc[:, :9]
 
         remind_kline.columns = [
-            "date", "open", "high", "low", "close", "volume", "close_time", "num_trades"
+            "date", "open", "high", "low", "close", "volume", "close_time",
+            "quote_asset_volume", "num_trades"
         ]
         remind_kline.index = remind_kline["date"]
+        remind_kline.drop(columns=["quote_asset_volume"], inplace=True)
         remind_kline = remind_kline.astype(float)
 
         return remind_kline
@@ -354,14 +358,12 @@ class User(Client, Strategy):
                     f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 strategy._send_message(txt)
 
-        
         if msg["stream"] == strategy.stream:
             strategy._human_readable_kline(msg["data"])
             # Check difference between date of
             # current candle and date of start_listen_key
             # equal or greater than 55 min
-            if (msg["data"]["E"] -
-                    strategy.start_listen_key) >= 1 * 60 * 1000:
+            if (msg["data"]["E"] - strategy.start_listen_key) >= 1 * 60 * 1000:
                 try:
 
                     strategy.futures_stream_keepalive(strategy.listen_key)
@@ -520,7 +522,7 @@ class User(Client, Strategy):
         else:
             print(strategy.stream)
             print(msg)
-        
+
     def _combine_data(strategy):
         """Add last websocket data to main data"""
 
@@ -533,8 +535,14 @@ class User(Client, Strategy):
                                  last_kline_data.date].empty:
             # Replace the last candle in the historical kline
             # with the websocket data
-            strategy.data.iloc[-1] = strategy.tmp_data[
-                strategy.tmp_data.date == last_kline_data.date].iloc[0]
+            # strategy.data.iloc[-1] = strategy.tmp_data[
+            #     strategy.tmp_data.date == last_kline_data.date].iloc[0]
+            # Delete the last candle in the historical kline
+            strategy.data = strategy.data.drop(strategy.data.index[-1])
+            strategy.data = pd.concat([strategy.data,
+                                        strategy.tmp_data[
+                                             strategy.tmp_data.date ==
+                                             last_kline_data.date]])
         strategy.data = pd.concat([
             strategy.data,
             strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date]
@@ -549,7 +557,8 @@ class User(Client, Strategy):
         frame = pd.DataFrame([msg['k']])
         frame = frame.filter(['t', 'T', 'o', 'c', 'h', 'l', 'v', 'n'])
         frame.columns = [
-            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume', 'num_trades'
+            'date', 'close_time', 'open', 'close', 'high', 'low', 'volume',
+            'num_trades'
         ]
         frame.index = frame['date']
         frame = frame.astype(float)
@@ -615,7 +624,6 @@ class User(Client, Strategy):
         comment : str
             The comment of the position.
         """
-        print(strategy.data)
         current_candle = strategy.data.loc[strategy.current_candle]
         if strategy._permission_entry(signal=signal,
                                       direction=direction,
@@ -630,40 +638,39 @@ class User(Client, Strategy):
             # if strategy.open_positions == []:
             if qty is None:
                 quantity = float(
-                    str(strategy.free_secondary * percent_of_assets *
-                        0.999 / current_candle["close"])[:5])
+                    str(strategy.free_secondary * percent_of_assets * 0.999 /
+                        current_candle["close"])[:5])
             else:
                 quantity = float(str(qty)[:5])
             if direction == "long":
                 side = "BUY"
             elif direction == "short":
                 side = "SELL"
-            if strategy.minQty <= quantity * current_candle["close"]:        
+            if strategy.minQty <= quantity * current_candle["close"]:
                 if strategy.keep_time_limit_chunk is not None and \
-                    limit is None:            
+                    limit is None:
                     entry_price = strategy.free_secondary * percent_of_assets * 0.999
-                    if entry_price >= strategy.max_usd:                
+                    if entry_price >= strategy.max_usd:
                         chunks = strategy.decomposition(entry_price)
                         for chunk in chunks[1:]:
                             chunk = float(
                                 str(chunk / current_candle["close"])[:5])
-                            multiplier = 0.1 / (len(chunks)-1)
+                            multiplier = 0.1 / (len(chunks) - 1)
                             if direction == "short":
                                 multiplier = -multiplier
-                            _limit = (1-multiplier) * current_candle["close"]
+                            _limit = (1 - multiplier) * current_candle["close"]
                             _limit = float(f"{_limit:.1f}")
-                            strategy.entry(
-                                signal=signal,
-                                direction=direction,
-                                percent_of_assets=percent_of_assets,
-                                qty=chunk,
-                                limit=_limit,
-                                stop=stop,
-                                comment=comment)
-                    
+                            strategy.entry(signal=signal,
+                                           direction=direction,
+                                           percent_of_assets=percent_of_assets,
+                                           qty=chunk,
+                                           limit=_limit,
+                                           stop=stop,
+                                           comment=comment)
+
                         quantity = float(
                             str(chunks[0] / current_candle["close"])[:5])
-            
+
                 try:
                     if limit is None:
                         order = strategy.futures_create_order(
@@ -716,7 +723,8 @@ class User(Client, Strategy):
         if strategy._entry and \
             strategy.start_trade and \
             strategy.data.date.iloc[
-                -1] == kwargs["current_candle"]["date"]:
+                -1] == kwargs["current_candle"]["date"] and \
+                    strategy.free_secondary > strategy.minQty:
             side = kwargs["direction"]
             entry_date = strategy._round_time(
                 kwargs["current_candle"].close_time)
@@ -914,9 +922,12 @@ class User(Client, Strategy):
         symbol = primary + secondary
         list_of_symbols = strategy.futures_exchange_info()["symbols"]
         try:
-            info = next(item for item in list_of_symbols if item["symbol"] == symbol)
+            info = next(item for item in list_of_symbols
+                        if item["symbol"] == symbol)
             strategy.symbol = symbol
-            strategy.minQty = float(next(item for item in info["filters"] if item["filterType"] == "MARKET_LOT_SIZE")["minQty"])
+            strategy.minQty = float(
+                next(item for item in info["filters"]
+                     if item["filterType"] == "MARKET_LOT_SIZE")["minQty"])
             return primary, secondary
         except StopIteration:
             err = f"The pair {symbol} is not supported."\
@@ -1205,24 +1216,25 @@ class User(Client, Strategy):
             if order.order_type.lower() == "limit" and\
                 (self.current_time - order.entry_date) > self.keep_time_limit_chunk:
                 try:
-                    self.futures_cancel_order(orderId=order.orderid, symbol=self.symbol)
+                    self.futures_cancel_order(orderId=order.orderid,
+                                              symbol=self.symbol)
                     # Delete order from open positions
                     self._open_positions.remove(order)
                     # Create market order
-                    new_order = self.futures_create_order(symbol=self.symbol,
-                                                side="BUY" if order.type.lower() == "long" else "SELL",
-                                                type="MARKET",
-                                                quantity=order.contract)
-                    
-                    trade = Trade(
-                        orderid=new_order["orderId"],
-                        type=order.type,
-                        entry_date=new_order["updateTime"],
-                        entry_price=new_order["price"],
-                        entry_signal=order.signal,
-                        contract=order.contract,
-                        order_type="MARKET",
-                        comment=order.comment)
+                    new_order = self.futures_create_order(
+                        symbol=self.symbol,
+                        side="BUY" if order.type.lower() == "long" else "SELL",
+                        type="MARKET",
+                        quantity=order.contract)
+
+                    trade = Trade(orderid=new_order["orderId"],
+                                  type=order.type,
+                                  entry_date=new_order["updateTime"],
+                                  entry_price=new_order["price"],
+                                  entry_signal=order.signal,
+                                  contract=order.contract,
+                                  order_type="MARKET",
+                                  comment=order.comment)
 
                     close_time = trade.entry_date
                     plot = self._plot_to_channel(trade)
@@ -1242,7 +1254,7 @@ class User(Client, Strategy):
                         f"\nEntry Price: {order.entry_price}"\
                         f"\nError: {e}"
                     self._send_message(msg)
-                    
+
     def restart_streams(self):
         """
         Restart client and threads.
