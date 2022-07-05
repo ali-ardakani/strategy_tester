@@ -547,6 +547,8 @@ class User(Client, Strategy):
             strategy.data,
             strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date]
         ]).iloc[1:]  # Add the websocket data to the historical kline
+        
+        strategy.data.index = strategy.data.date
 
     def _human_readable_kline(strategy, msg: dict):
         """
