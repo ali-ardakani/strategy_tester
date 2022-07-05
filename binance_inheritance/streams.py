@@ -11,7 +11,7 @@ class ThreadedWebsocketManager(ThreadedWebsocketManager):
         async with socket as s:
             while self._socket_running[path]:
                 try:
-                    msg = await asyncio.wait_for(s.recv(), 3)
+                    msg = await asyncio.wait_for(s.recv(), 5)
                 except asyncio.TimeoutError as e:
                     msg = {"stream": "error", "data":{'e':'connection error'}, "error_msg": "timeout error"}
                 except BinanceAPIException as e:
