@@ -785,7 +785,7 @@ class User(Client, Strategy):
             try:
                 current_candle = strategy.data.loc[strategy.current_candle]
             except:
-                print(strategy.data.tail(3))
+                print(strategy.data.head(3))
                 print(strategy.current_candle)
             if strategy.start_trade and strategy.data.date.iloc[
                     -1] == current_candle["date"]:
