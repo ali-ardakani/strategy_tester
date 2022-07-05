@@ -842,8 +842,8 @@ class User(Client, Strategy):
                             f"Exit Price: {current_candle['close']}\n"\
                             f"Error: {e}"
                         strategy._send_message(msg)
-            # else:
-            #     strategy._check_exit_if_position(current_candle, from_entry)
+            else:
+                strategy._check_exit_if_position(current_candle, from_entry)
 
     def _check_exit_if_position(self, current_candle: pd.Series,
                                 from_entry: str) -> None:
@@ -864,13 +864,14 @@ class User(Client, Strategy):
                 if position.entry_signal == from_entry
             ]
             for position in open_position:
-                msg = "Exit signal received at"\
-                    f" {self._round_time(current_candle.close_time)}"\
-                    " but position is not closed"\
-                    f"\n\nSymbol: {self.symbol}"\
-                    f"\nEntry Date: {position.entry_date}"\
-                    f"\nEntry Signal: {position.entry_signal}"\
-                    f"\nComment: {position.comment}"
+                if position.entry_date < current_candle.date:
+                    msg = "Exit signal received at"\
+                        f" {self._round_time(current_candle.close_time)}"\
+                        " but position is not closed"\
+                        f"\n\nSymbol: {self.symbol}"\
+                        f"\nEntry Date: {position.entry_date}"\
+                        f"\nEntry Signal: {position.entry_signal}"\
+                        f"\nComment: {position.comment}"
 
                 self._send_message(msg)
 
