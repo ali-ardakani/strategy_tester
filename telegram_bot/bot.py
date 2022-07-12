@@ -35,6 +35,7 @@ class Manager:
         self.channel_id = channel_id
         self.licensed = self._validate_licensed(licensed)
         self.queue_message = []
+        self.queue_image = []
         # Run _send_message_to_channel in a thread
         self.thread_send_message = Thread(target=self._send_message_to_channel)
         self.thread_send_message.start()
@@ -74,7 +75,11 @@ class Manager:
                 for message in self.queue_message:
                     self.bot.send_message(chat_id=self.channel_id, text=message)
                     self.queue_message.remove(message)
-                    time.sleep(1)
+                    time.sleep(3)
+                for image in self.queue_image:
+                    self.bot.send_photo(chat_id=self.channel_id, photo=image[0], caption=image[1])
+                    self.queue_image.remove(image)
+                    time.sleep(3)
             except:
                 time.sleep(5)
 
@@ -83,25 +88,11 @@ class Manager:
             raise ValueError("Channel ID is not set")
 
         self.queue_message.append(text)
-        # thread = Thread(target=self._check_connect_on,
-        #                 kwargs={
-        #                     "function": self.bot.send_message,
-        #                     "chat_id": self.channel_id,
-        #                     "text": text
-        #                 })
-        # thread.start()
 
-    def send_image_to_channel(self, img_bytes: bytes, caption: str):
+    def send_image_to_channel(self, img_bytes: bytes, caption: str=None):
         if self.channel_id is None:
             raise ValueError("Channel ID is not set")
-        thread = Thread(target=self._check_connect_on,
-                        kwargs={
-                            "function": self.bot.send_photo,
-                            "chat_id": self.channel_id,
-                            "photo": img_bytes,
-                            "caption": caption
-                        })
-        thread.start()
+        self.queue_image.append((img_bytes, caption))
 
     def _send_message_to_bot(self, update: Update, context: CallbackContext,
                              text: str):
