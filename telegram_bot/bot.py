@@ -15,6 +15,7 @@ from threading import Thread
 from strategy_tester import Strategy
 import time
 import pickle
+import asyncio
 
 
 class Manager:
@@ -45,7 +46,9 @@ class Manager:
         self.user = user(telegram_bot=self, **kwargs)
         # self.backtest = self._create_copy_class(user)()
         
-
+        # Set queue message
+        self.queue_message = []
+        
         # Memory function
         self.memory_function = None
 
@@ -63,18 +66,25 @@ class Manager:
                 break
             except ConnectTimeoutError:
                 time.sleep(10)
+                
+    async def _send_message_to_channel(self):
+        for message in self.queue_message:
+            await self.bot.send_message(chat_id=self.channel_id, text=message)
+            self.queue_message.remove(message)
+            await asyncio.sleep(1)
 
     def send_message_to_channel(self, text: str):
         if self.channel_id is None:
             raise ValueError("Channel ID is not set")
 
-        thread = Thread(target=self._check_connect_on,
-                        kwargs={
-                            "function": self.bot.send_message,
-                            "chat_id": self.channel_id,
-                            "text": text
-                        })
-        thread.start()
+        self.queue_message.append(text)
+        # thread = Thread(target=self._check_connect_on,
+        #                 kwargs={
+        #                     "function": self.bot.send_message,
+        #                     "chat_id": self.channel_id,
+        #                     "text": text
+        #                 })
+        # thread.start()
 
     def send_image_to_channel(self, img_bytes: bytes, caption: str):
         if self.channel_id is None:
