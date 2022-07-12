@@ -709,7 +709,7 @@ class User(Client, Strategy):
                         f"\n\nOpen Price: {trade.entry_price}"\
                         f"\nContract: {quantity}"\
                         f"\nComment: {comment}"
-                    # strategy._send_image(plot, caption=caption)
+                    strategy._send_image(plot, caption=caption)
 
                     strategy._open_positions.append(trade)
                 except BinanceAPIException as e:
