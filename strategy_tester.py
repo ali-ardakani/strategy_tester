@@ -2,6 +2,7 @@ import inspect
 import re
 from datetime import datetime
 from threading import Thread
+from turtle import position
 
 import pandas as pd
 
@@ -110,10 +111,18 @@ class StrategyTester:
         
     @property
     def position_size(self):
-        return len(self.open_positions)
+        # TODO: add contract size
+        size = 0
+        for position in self.open_positions:
+            if position.type == "long":
+                size = 1
+            else:
+                size = -1
+        return size
     
     @property
     def open_profit_percent(self):
+        # TODO: handles several multiple open positions
         if self.open_positions:
             current_candle = self._current_candle_calc()
             profits = []
@@ -124,7 +133,7 @@ class StrategyTester:
                     profit = position.entry_price - current_candle.close
                 profit = profit * 100/position.entry_price
                 profits.append(profit)
-            return tuple(profits)
+            return tuple(profits)[0] if profits else None
         else:
             return None
 

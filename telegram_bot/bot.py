@@ -36,10 +36,10 @@ class Manager:
         self.channel_id = channel_id
         self.licensed = self._validate_licensed(licensed)
         self.queue_message = []
-        self._loop = asyncio.get_event_loop()
-        # Run _send_message_to_channel in loop forever
-        self._loop.create_task(self._send_message_to_channel())
-        self._loop.run_forever()
+        # Run _send_message_to_channel in a thread
+        self.thread_send_message = Thread(target=self._send_message_to_channel)
+        self.thread_send_message.start()
+        
         # Initialize the database
         self.path_db = self._validate_database(path_db)
         self.updater = Updater(token=self.token, use_context=self.use_context)
@@ -71,6 +71,7 @@ class Manager:
                 
     async def _send_message_to_channel(self):
         while True:
+            print("Send message to channel")
             try:
                 for message in self.queue_message:
                     await self.bot.send_message(chat_id=self.channel_id, text=message)
