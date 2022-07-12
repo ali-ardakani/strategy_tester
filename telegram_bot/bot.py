@@ -15,7 +15,6 @@ from threading import Thread
 from strategy_tester import Strategy
 import time
 import pickle
-import asyncio
 
 
 class Manager:
@@ -69,16 +68,15 @@ class Manager:
             except ConnectTimeoutError:
                 time.sleep(10)
                 
-    async def _send_message_to_channel(self):
+    def _send_message_to_channel(self):
         while True:
-            print("Send message to channel")
             try:
                 for message in self.queue_message:
-                    await self.bot.send_message(chat_id=self.channel_id, text=message)
+                    self.bot.send_message(chat_id=self.channel_id, text=message)
                     self.queue_message.remove(message)
-                    await asyncio.sleep(1)
+                    time.sleep(1)
             except:
-                await asyncio.sleep(5)
+                time.sleep(5)
 
     def send_message_to_channel(self, text: str):
         if self.channel_id is None:
