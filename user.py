@@ -899,10 +899,6 @@ class User(Client, Strategy):
 
     def run(self):
         """Run the strategy."""
-        self._exit = True
-        self._entry = True
-        self._permission_long = True
-        self._permission_short = True
         self.start_trade = True
 
     def setdata(self, data):
