@@ -2,7 +2,6 @@ import inspect
 import re
 from datetime import datetime
 from threading import Thread
-from turtle import position
 
 import pandas as pd
 
