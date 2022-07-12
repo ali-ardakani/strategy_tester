@@ -107,6 +107,26 @@ class StrategyTester:
     @contract.setter
     def contract(strategy, contract):
         strategy._contract = contract
+        
+    @property
+    def position_size(self):
+        return len(self.open_positions)
+    
+    @property
+    def open_profit_percent(self):
+        if self.open_positions:
+            current_candle = self._current_candle_calc()
+            profits = []
+            for position in self.open_positions:
+                if position.type == "long":
+                    profit = current_candle.close - position.entry_price
+                else:
+                    profit = position.entry_price - current_candle.close
+                profit = profit * 100/position.entry_price
+                profits.append(profit)
+            return tuple(profits)
+        else:
+            return None
 
     def entry(strategy,
               signal: str,

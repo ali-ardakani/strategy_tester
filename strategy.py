@@ -64,7 +64,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         kwargs: dict
             The parameters that you want to set.
         """
-        parameters = []
+        strategy.parameters = kwargs
         for key, value in kwargs.items():
             if value == "open":
                 value = strategy.open
@@ -76,9 +76,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
                 value = strategy.close
             elif value == "hlcc4":
                 value = strategy.hlcc4
-            parameters.append((key, value))
             strategy.__setattr__(key, value)
-        strategy.parameters = tuple(parameters)
             
     def _set_cache(strategy):
         """

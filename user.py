@@ -12,9 +12,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from binance import Client
 from binance.exceptions import BinanceAPIException
-from strategy_tester import strategy
 
-from strategy_tester.binance_inheritance import ThreadedWebsocketManager
+from strategy_tester.binance_inheritance import (ThreadedWebsocketManager,
+                                                 StreamUserData)
 from strategy_tester.commands import CalculatorTrade
 from strategy_tester.decorator import validate_float
 from strategy_tester.models import Trade
@@ -55,8 +55,13 @@ class User(Client, Strategy):
                                          tld, testnet)
         strategy.primary_pair, strategy.secondary_pair = \
             strategy._validate_pair(primary_pair, secondary_pair)
-        strategy.threaded_websocket_manager = \
+        strategy.threaded_websocket_manager_spot = \
             ThreadedWebsocketManager(api_key, api_secret)
+        # strategy.stream_user_data = StreamUserData(
+        #     api_key=api_key,
+        #     api_secret=api_secret,
+        #     callback=strategy.__stream_live_account)
+        # strategy.stream_user_data.start()
         strategy.current_candle = None
         strategy._open_positions = []
         strategy._closed_positions = []
@@ -76,13 +81,14 @@ class User(Client, Strategy):
         strategy.percent_sl = percent_sl
         strategy.leverage = strategy._set_leverage(leverage)
         strategy.margin_type = strategy._set_margin_type(margin_type)
-        strategy.custom_amount_cash = custom_amount_cash if custom_amount_cash is None else \
+        strategy.custom_amount_cash = custom_amount_cash \
+            if custom_amount_cash is None else \
             strategy.\
-                _validate_custom_amount_cash(custom_amount_cash)
+            _validate_custom_amount_cash(custom_amount_cash)
         strategy.keep_time_limit_chunk = strategy.\
             _validate_keep_time_limit_chunk(keep_time_limit_chunk)
         # Start the thread's activity.
-        strategy.threaded_websocket_manager.start()
+        strategy.threaded_websocket_manager_spot.start()
         # Create a tmp dataframe for add kline websocket data
         # In order to receive the data correctly
         # and not to interrupt their time
@@ -206,17 +212,21 @@ class User(Client, Strategy):
 
     def trade(strategy, row):
         """Execute the trade for the strategy.
-        
+
         Description
         -----------
         This function is used to execute the trade for the strategy.
-        In this function, set the current candle and execute the trade_calc function.
-        
+        In this function, set the current candle and
+        execute the trade_calc function.
+
         Parameters
         ----------
         row: DataFrame
             The row of the data that you want to execute the trade for.
         """
+        print("Last candle: ", strategy.data.iloc[-1].name)
+        print("Current candle: ", row.name)
+        print("Last Cond: ", strategy._conditions.iloc[-1].name, end="\n\n")
         strategy.current_candle = row.name
         if strategy.percent_sl is not None:
             strategy._sl_onion()
@@ -309,12 +319,14 @@ class User(Client, Strategy):
             strategy.start_listen_key = data.iloc[-1].date
             strategy.stream = strategy.symbol.lower() + "@kline_" + \
                 strategy.interval
+
             strategy.stream_live_account = \
-                strategy.threaded_websocket_manager\
-                    .start_futures_multiplex_socket(
+                strategy.threaded_websocket_manager_spot\
+                    .start_multiplex_socket(
                         callback=strategy.__stream_live_account,
-                        streams=[strategy.listen_key, strategy.stream],
+                        streams=[strategy.stream],
                     )
+
         except Exception as e:
             strategy._send_error_message(e)
 
@@ -349,7 +361,7 @@ class User(Client, Strategy):
             txt = "Stream live error at \n"\
                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             strategy._send_message(txt)
-            strategy.threaded_websocket_manager.stop()
+            strategy.threaded_websocket_manager_spot.stop()
             strategy._validate_data(strategy.data)
         else:
             if not strategy.connection_internet:
@@ -373,7 +385,7 @@ class User(Client, Strategy):
                         msg = "Stream live error at \n"\
                             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                         strategy._send_message(msg)
-                        strategy.threaded_websocket_manager.stop()
+                        strategy.threaded_websocket_manager_spot.stop()
                         strategy._validate_data(strategy.data)
 
         elif msg["data"]["e"] == "listenKeyExpired":
@@ -386,7 +398,7 @@ class User(Client, Strategy):
                     msg = "Stream live error at \n"\
                         f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                     strategy._send_message(msg)
-                    strategy.threaded_websocket_manager.stop()
+                    strategy.threaded_websocket_manager_spot.stop()
                     strategy._validate_data(strategy.data)
         elif msg["data"]["e"] == "MARGIN_CALL":
             # Convert int time to datetime
@@ -523,31 +535,14 @@ class User(Client, Strategy):
             print(strategy.stream)
             print(msg)
 
-    def _combine_data(strategy):
+    def _combine_data(strategy, frame: pd.DataFrame):
         """Add last websocket data to main data"""
 
-        last_kline_data = strategy.data.iloc[
-            -1]  # Last candle in the historical kline
-
-        # If the last candle in the historical kline
-        # is in the websocket data
-        if not strategy.tmp_data.iloc[-1].date == last_kline_data.date:
-            # Replace the last candle in the historical kline
-            # with the websocket data
-            # strategy.data.iloc[-1] = strategy.tmp_data[
-            #     strategy.tmp_data.date == last_kline_data.date].iloc[0]
-            # Delete the last candle in the historical kline
-            
-            strategy.data.loc[strategy.data.date ==
-                              last_kline_data.date] = strategy.tmp_data[
-                                  strategy.tmp_data.date ==
-                                  last_kline_data.date]
-        
-        if not strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date].empty:
-            strategy.data = pd.concat([
-                strategy.data,
-                strategy.tmp_data[strategy.tmp_data.date > last_kline_data.date]
-            ]).iloc[1:]  # Add the websocket data to the historical kline
+        frame = frame.filter(strategy.data.columns)
+        if frame.date.iloc[0] == strategy.data.iloc[-1].date:
+            strategy.data.iloc[-1] = frame.iloc[0].values
+        else:
+            strategy.data = pd.concat([strategy.data, frame]).iloc[1:]
 
     def _human_readable_kline(strategy, msg: dict):
         """
@@ -563,43 +558,50 @@ class User(Client, Strategy):
         ]
         frame.index = frame['date']
         frame = frame.astype(float)
+
         if msg["k"]["x"]:
-            strategy.tmp_data = pd.concat([strategy.tmp_data, frame], axis=0)
+            # strategy.tmp_data = pd.concat([strategy.tmp_data, frame], axis=0)
             while strategy.data.empty:
                 pass
-            strategy._combine_data()
+            strategy._combine_data(frame)
             strategy.high = strategy.data.high
             strategy.low = strategy.data.low
             strategy.open = strategy.data.open
             strategy.close = strategy.data.close
             strategy.volume = strategy.data.volume
-            print(strategy.data)
+            print("Last kline after combine: ", strategy.data.iloc[-1].name)
+            print("Last Frame: ", frame.iloc[-1].name)
             if strategy.start_trade:
-                # try:
-                strategy._init_indicator()
-                # except Exception as e:
-                #     strategy._send_error_message(e)
+                try:
+                    strategy.set_parameters(**strategy.parameters)
+                except Exception as e:
+                   strategy._send_error_message(e)
+                
+                try:
+                    strategy._init_indicator()
+                except Exception as e:
+                    strategy._send_error_message(e)
 
-                # try:
-                strategy.indicators()
-                # except Exception as e:
-                #     strategy._send_error_message(e)
+                try:
+                    strategy.indicators()
+                except Exception as e:
+                    strategy._send_error_message(e)
 
-                # try:
-                strategy.start()
-                # except Exception as e:
-                #     strategy._send_error_message(e)
+                try:
+                    strategy.start()
+                except Exception as e:
+                    strategy._send_error_message(e)
 
-                # try:
-                strategy.condition()
-                # except Exception as e:
-                #     strategy._send_error_message(e)
+                try:
+                    strategy.condition()
+                except Exception as e:
+                    strategy._send_error_message(e)
 
-                # try:
-                print(strategy.data)
-                strategy.conditions.apply(strategy.trade, axis=1)
-                # except Exception as e:
-                #     strategy._send_error_message(e)
+                try:
+                    strategy.conditions.apply(strategy.trade, axis=1)
+                except Exception as e:
+                    strategy._send_error_message(e)
+                    
         strategy.current_kline = frame
 
     def entry(strategy,
@@ -650,9 +652,11 @@ class User(Client, Strategy):
             elif direction == "short":
                 side = "SELL"
             if strategy.minQty <= quantity * current_candle["close"]:
-                if strategy.keep_time_limit_chunk is not None and \
-                    limit is None:
-                    entry_price = strategy.free_secondary * percent_of_assets * 0.999
+                if strategy.keep_time_limit_chunk is not None \
+                  and limit is None:
+
+                    entry_price = \
+                        strategy.free_secondary * percent_of_assets * 0.999
                     if entry_price >= strategy.max_usd:
                         chunks = strategy.decomposition(entry_price)
                         for chunk in chunks[1:]:
@@ -726,8 +730,8 @@ class User(Client, Strategy):
         if strategy._entry and \
             strategy.start_trade and \
             strategy.data.date.iloc[
-                -1] == kwargs["current_candle"]["date"] and \
-                    strategy.free_secondary > strategy.minQty:
+                -1] == kwargs["current_candle"]["date"] and\
+                strategy.free_secondary > strategy.minQty:
             side = kwargs["direction"]
             entry_date = strategy._round_time(
                 kwargs["current_candle"].close_time)
@@ -1191,9 +1195,6 @@ class User(Client, Strategy):
         elif interval[1] == "d":
             interval = int_ * 60 * 60 * 24
 
-        # if numerical < interval:
-        #     raise ValueError("Keep time limit chunk must be multiple of interval.e.g.  1h, 2d, 3m, 4s")
-
         return numerical * 1000
 
     def _sl_onion(self):
@@ -1221,7 +1222,8 @@ class User(Client, Strategy):
         """
         for order in self._open_positions:
             if order.order_type.lower() == "limit" and\
-                (self.current_time - order.entry_date) > self.keep_time_limit_chunk:
+              (self.current_time - order.entry_date)\
+              > self.keep_time_limit_chunk:
                 try:
                     self.futures_cancel_order(orderId=order.orderid,
                                               symbol=self.symbol)
@@ -1257,7 +1259,8 @@ class User(Client, Strategy):
                 except BinanceAPIException as e:
                     msg = "Error in Open Position\n"\
                         f"\nSymbol: {self.symbol}"\
-                        f"\nSide: {order.direction}\nQuantity: {order.contract}"\
+                        f"\nSide: {order.direction}\n"\
+                        f"Quantity: {order.contract}"\
                         f"\nEntry Price: {order.entry_price}"\
                         f"\nError: {e}"
                     self._send_message(msg)
