@@ -35,6 +35,7 @@ class Manager:
         self.use_context = use_context
         self.channel_id = channel_id
         self.licensed = self._validate_licensed(licensed)
+        self.queue_message = []
         # Initialize the database
         self.path_db = self._validate_database(path_db)
         self.updater = Updater(token=self.token, use_context=self.use_context)
@@ -45,9 +46,6 @@ class Manager:
         self.kwargs = kwargs
         self.user = user(telegram_bot=self, **kwargs)
         # self.backtest = self._create_copy_class(user)()
-        
-        # Set queue message
-        self.queue_message = []
         
         # Memory function
         self.memory_function = None
