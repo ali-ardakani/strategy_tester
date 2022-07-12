@@ -224,9 +224,6 @@ class User(Client, Strategy):
         row: DataFrame
             The row of the data that you want to execute the trade for.
         """
-        print("Last candle: ", strategy.data.iloc[-1].name)
-        print("Current candle: ", row.name)
-        print("Last Cond: ", strategy._conditions.iloc[-1].name, end="\n\n")
         strategy.current_candle = row.name
         if strategy.percent_sl is not None:
             strategy._sl_onion()
@@ -569,8 +566,6 @@ class User(Client, Strategy):
             strategy.open = strategy.data.open
             strategy.close = strategy.data.close
             strategy.volume = strategy.data.volume
-            print("Last kline after combine: ", strategy.data.iloc[-1].name)
-            print("Last Frame: ", frame.iloc[-1].name)
             if strategy.start_trade:
                 try:
                     strategy.set_parameters(**strategy.parameters)
