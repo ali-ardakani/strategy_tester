@@ -169,10 +169,10 @@ class Manager:
 
         if permission_code:
             self.user.run()
-            self._exit = True
-            self._entry = True
-            self._permission_long = True
-            self._permission_short = True
+            self.user._exit = True
+            self.user._entry = True
+            self.user._permission_long = True
+            self.user._permission_short = True
             msg = "Strategy is started!"\
                 "\nStrategy have permission to enter long and short."\
                 "If you want to prevent the strategy to enter long and short,"\
