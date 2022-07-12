@@ -36,6 +36,10 @@ class Manager:
         self.channel_id = channel_id
         self.licensed = self._validate_licensed(licensed)
         self.queue_message = []
+        self._loop = asyncio.get_event_loop()
+        # Run _send_message_to_channel in loop forever
+        self._loop.create_task(self._send_message_to_channel())
+        self._loop.run_forever()
         # Initialize the database
         self.path_db = self._validate_database(path_db)
         self.updater = Updater(token=self.token, use_context=self.use_context)
@@ -66,10 +70,14 @@ class Manager:
                 time.sleep(10)
                 
     async def _send_message_to_channel(self):
-        for message in self.queue_message:
-            await self.bot.send_message(chat_id=self.channel_id, text=message)
-            self.queue_message.remove(message)
-            await asyncio.sleep(1)
+        while True:
+            try:
+                for message in self.queue_message:
+                    await self.bot.send_message(chat_id=self.channel_id, text=message)
+                    self.queue_message.remove(message)
+                    await asyncio.sleep(1)
+            except:
+                await asyncio.sleep(5)
 
     def send_message_to_channel(self, text: str):
         if self.channel_id is None:
