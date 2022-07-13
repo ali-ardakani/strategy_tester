@@ -703,7 +703,7 @@ class User(Client, Strategy):
 
                     close_time = current_candle.close_time
                     plot = strategy._plot_to_channel(trade)
-                    caption = f"#Open#{direction}#{signal}\n\n\n"\
+                    caption = f"#Open #{direction} #{signal}\n\n\n"\
                         f"Open {direction} in"\
                         f"{strategy._round_time(close_time)}"\
                         f"\n\nOpen Price: {trade.entry_price}"\
@@ -817,7 +817,7 @@ class User(Client, Strategy):
                         CalculatorTrade(position, data_trade)
                         close_time = current_candle.close_time
                         plot = strategy._plot_to_channel(position)
-                        caption = f"#Close#{position.type}#{signal}\n\n\n"\
+                        caption = f"#Close #{position.type} #{signal}\n\n\n"\
                             f"Close {position.type} in "\
                             f"{strategy._round_time(close_time)}"\
                             f"\n\nClose Price: {current_candle.close}\n"\
@@ -1238,7 +1238,7 @@ class User(Client, Strategy):
 
                     close_time = trade.entry_date
                     plot = self._plot_to_channel(trade)
-                    caption = f"#Open#{order.type}#{order.signal}\n\n\n"\
+                    caption = f"#Open #{order.type} #{order.signal}\n\n\n"\
                         f"Open {order.type} in"\
                         f"{self._round_time(close_time)}"\
                         f"\n\nOpen Price: {trade.entry_price}"\

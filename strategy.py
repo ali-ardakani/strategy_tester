@@ -1,3 +1,4 @@
+from symtable import Symbol
 from strategy_tester import StrategyTester
 from strategy_tester.backtest import Backtest
 from .indicator import IndicatorsParallel
@@ -14,7 +15,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
     StrategyTester is a class that tests a strategy.
     StrategyTester can be used to test a strategy in financial markets.
     """
-    
+
     _permission_long = True
     _permission_short = True
 
@@ -32,7 +33,8 @@ class Strategy(StrategyTester, IndicatorsParallel):
     def hlcc4(strategy):
         _hlcc4 = strategy.__dict__.get("_hlcc4", None)
         if _hlcc4 is None:
-            strategy._hlcc4 = (strategy.high + strategy.low + strategy.close + strategy.close)/4
+            strategy._hlcc4 = (strategy.high + strategy.low + strategy.close +
+                               strategy.close) / 4
         return strategy._hlcc4
 
     def __init__(strategy, **kwargs) -> None:
@@ -44,8 +46,8 @@ class Strategy(StrategyTester, IndicatorsParallel):
             All variables that need to be set are set in the constructor.
         """
         pass
-        
-    def setdata(strategy, data: pd.DataFrame=None):
+
+    def setdata(strategy, data: pd.DataFrame = None):
         """ Set the data for the strategy tester.
         Parameters
         ----------
@@ -53,7 +55,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
             The data that you want to test the strategy with.
         """
         strategy._set_data(data)
-        
+
     def set_parameters(strategy, **kwargs):
         """Set the initial parameters for the strategy.
         
@@ -77,7 +79,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
             elif value == "hlcc4":
                 value = strategy.hlcc4
             strategy.__setattr__(key, value)
-            
+
     def _set_cache(strategy):
         """
         Set the cache for the strategy.
@@ -87,26 +89,33 @@ class Strategy(StrategyTester, IndicatorsParallel):
         start_time = strategy.data.iloc[0].date
         end_time = strategy.data.iloc[-1].date
         interval = strategy.interval
-        strategy.conditions.to_pickle('./cache/{}_{}_{}_{}.pickle'.format(strategy.__class__.__name__, interval, start_time, end_time))
-        
-        
+        strategy.conditions.to_pickle('./cache/{}_{}_{}_{}.pickle'.format(
+            strategy.__class__.__name__, interval, start_time, end_time))
+
     def _get_cache(strategy):
         start_time = strategy.data.iloc[0].date
         end_time = strategy.data.iloc[-1].date
         interval = strategy.interval
-        path_cache = './cache/{}_{}_{}_{}.pickle'.format(strategy.__class__.__name__, interval, start_time, end_time)
+        path_cache = './cache/{}_{}_{}_{}.pickle'.format(
+            strategy.__class__.__name__, interval, start_time, end_time)
         if os.path.exists(path_cache):
             strategy._conditions = pd.read_pickle(path_cache)
             return True
         else:
             return False
-        
-    def entry(strategy, signal: str, direction: str, qty: float = 1, limit: float = None, stop: float = None, comment: str = None):
+
+    def entry(strategy,
+              signal: str,
+              direction: str,
+              qty: float = 1,
+              limit: float = None,
+              stop: float = None,
+              comment: str = None):
         if strategy._permission_long and signal == "long":
             return super().entry(signal, direction, qty, limit, stop, comment)
         elif strategy._permission_short and signal == "short":
             return super().entry(signal, direction, qty, limit, stop, comment)
-        
+
     def indicators(strategy) -> None:
         """
         Description:
@@ -127,7 +136,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
                 self.add(hma500, sma200, cross)
         """
         pass
-    
+
     def condition(strategy):
         """
         Description:
@@ -142,7 +151,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
             ```
         """
         pass
-    
+
     def trade(strategy, row):
         """Execute the trade for the strategy.
         
@@ -158,7 +167,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         """
         strategy.current_candle = row.name
         strategy.trade_calc(row)
-        
+
     def trade_calc(strategy, row):
         """Check terms and open/close positions.
         
@@ -175,19 +184,22 @@ class Strategy(StrategyTester, IndicatorsParallel):
         """
         pass
 
-    def _insert_main_to_sheet(strategy, sheet: Sheet, thread:Thread=None) -> None:
+    def _insert_main_to_sheet(strategy,
+                              sheet: Sheet,
+                              thread: Thread = None) -> None:
         """Add the main backtest result to sheet."""
         if thread:
             # Wait for all of threads created by the periodical function to finish.
             while thread.is_alive():
                 pass
-            
+
         backtest_result = strategy.backtest().values()
         if strategy.links_results:
             sheet.add_columns_names(list(strategy.links_results.keys()))
-            sheet.add_row([[str(strategy.parameters)]+list(backtest_result) + list(strategy.links_results.values())])
+            sheet.add_row([[str(strategy.parameters)] + list(backtest_result) +
+                           list(strategy.links_results.values())])
         else:
-            sheet.add_row([[str(strategy.parameters)]+list(backtest_result)])
+            sheet.add_row([[str(strategy.parameters)] + list(backtest_result)])
 
     def add_to_sheet(strategy, sheet: Sheet) -> None:
         """Add the strategy to the sheet.
@@ -197,31 +209,32 @@ class Strategy(StrategyTester, IndicatorsParallel):
             sheet: Sheet
                 The sheet that you want to add the strategy to.
             """
-        
+
         # Run the all of threads created by the periodical function before starting the _insert_main_to_sheet function.
         for thread in strategy.threads_sheet:
             thread.start()
 
-        thread_main = Thread(target=strategy._insert_main_to_sheet, args=(sheet, thread))
+        thread_main = Thread(target=strategy._insert_main_to_sheet,
+                             args=(sheet, thread))
         thread_main.start()
 
     # def periodic_backtest(strategy, start_date:str=None, end_date:str=None) -> dict:
     #TODO: Add the periodical backtest function.
     #     """Calculate the backtest result for the specific period.
-        
+
     #     Description
     #     -----------
     #     This function is used to calculate the backtest result for the specific period.
     #     The backtest result is calculated by the backtest function.
     #     The backtest result is stored in the dictionary.
-        
+
     #     Parameters
     #     ----------
     #     start_date: str
     #         The start date of the backtest.
     #     end_date: str
     #         The end date of the backtest.
-        
+
     #     Returns
     #     -------
     #     dict
@@ -239,13 +252,17 @@ class Strategy(StrategyTester, IndicatorsParallel):
     #         conditions = strategy.conditions[(strategy.data.date <= end_date)]
 
     #     new_instance = conditions
-    
+
     @staticmethod
-    def _plot(candles:pd.DataFrame, entry_date: int or pd.Timestamp=None, exit_date: int or pd.Timestamp=None, type_: str=None):
+    def _plot(candles: pd.DataFrame,
+              entry_date: int or pd.Timestamp = None,
+              exit_date: int or pd.Timestamp = None,
+              type_: str = None):
         """Plot the candles."""
         # TODO: Show more candles on both sides and distinguish the beginning and the end of the trade.
         if not isinstance(candles.index, pd.DatetimeIndex):
-            candles.index = pd.to_datetime(candles.index, unit="ms").round("1s")
+            candles.index = pd.to_datetime(candles.index,
+                                           unit="ms").round("1s")
         if not entry_date:
             entry_date = candles.index[0]
         if not exit_date:
@@ -259,7 +276,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         if type_ == "candle":
             entry_color = "blue"
             exit_color = "blue"
-            y_entry= candles.close.iloc[0]
+            y_entry = candles.close.iloc[0]
             y_exit = candles.close.iloc[-1]
         elif type_ == "long":
             entry_color = "green"
@@ -271,13 +288,13 @@ class Strategy(StrategyTester, IndicatorsParallel):
             exit_color = "green"
             y_entry = candles.loc[entry_date, "low"]
             y_exit = candles.loc[exit_date, "high"]
-            
+
         chart = go.Candlestick(x=candles.index,
-                            open=candles.open,
-                            high=candles.high,
-                            low=candles.low,
-                            close=candles.close)
-        
+                               open=candles.open,
+                               high=candles.high,
+                               low=candles.low,
+                               close=candles.close)
+
         entry_arrow = go.Scatter(x=[entry_date],
                                  y=[y_entry],
                                  mode="markers",
@@ -292,8 +309,10 @@ class Strategy(StrategyTester, IndicatorsParallel):
                            yaxis=dict(title="Price"))
         fig = go.Figure(data=data, layout=layout)
         fig.show()
-        
-    def plot_candles(strategy, start_date:str=None, end_date:str=None) -> None:
+
+    def plot_candles(strategy,
+                     start_date: str = None,
+                     end_date: str = None) -> None:
         """Plot the candles.
         
         Description
@@ -309,11 +328,14 @@ class Strategy(StrategyTester, IndicatorsParallel):
             The end date of the backtest.
         """
         if not start_date and not end_date:
-            raise ValueError("start_date and end_date cannot be None at the same time.")
+            raise ValueError(
+                "start_date and end_date cannot be None at the same time.")
 
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').timestamp()*1000 if start_date else None
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').timestamp()*1000 if end_date else None
-        
+        start_date = datetime.strptime(
+            start_date, '%Y-%m-%d').timestamp() * 1000 if start_date else None
+        end_date = datetime.strptime(
+            end_date, '%Y-%m-%d').timestamp() * 1000 if end_date else None
+
         data = strategy.data
         data.index = pd.to_datetime(data.date, unit='ms')
 
@@ -323,8 +345,10 @@ class Strategy(StrategyTester, IndicatorsParallel):
             data = data[(data.date <= end_date)]
 
         strategy._plot(data)
-        
-    def plot_trade(strategy, num_of_trade: int=None, start_trade: str=None):
+
+    def plot_trade(strategy,
+                   num_of_trade: int = None,
+                   start_trade: str = None):
         """Plot the trade.
         
         Description
@@ -340,41 +364,59 @@ class Strategy(StrategyTester, IndicatorsParallel):
             The start date of the trade that you want to plot.
         """
         if not num_of_trade and not start_trade:
-            raise ValueError("num_of_trade and start_trade cannot be None at the same time.")
-        
+            raise ValueError(
+                "num_of_trade and start_trade cannot be None at the same time."
+            )
+
         trades = strategy.closed_positions + strategy.open_positions
 
         if num_of_trade:
             if num_of_trade > len(trades):
-                raise ValueError("num_of_trade cannot be greater than the number of trades.")
+                raise ValueError(
+                    "num_of_trade cannot be greater than the number of trades."
+                )
             trade = trades[num_of_trade]
-            
+
         if start_trade:
             _trades = []
             for trade in trades:
-                entry_date = str(pd.to_datetime(trade.entry_date, unit="ms").round("1s"))
+                entry_date = str(
+                    pd.to_datetime(trade.entry_date, unit="ms").round("1s"))
                 if start_trade in entry_date:
                     _trades.append(trade)
-                    
+
             if len(_trades) == 0:
                 raise ValueError("start_trade cannot be found.")
             if len(_trades) > 1:
-                _trades = [pd.to_datetime(trade.entry_date, unit="ms").round("1s") for trade in _trades]
-                raise ValueError(f"Found {len(_trades)} trades that start with {start_trade}.\n Please choose one of the options bellow; \n {_trades}")
-            
+                _trades = [
+                    pd.to_datetime(trade.entry_date, unit="ms").round("1s")
+                    for trade in _trades
+                ]
+                raise ValueError(
+                    f"Found {len(_trades)} trades that start with {start_trade}.\n Please choose one of the options bellow; \n {_trades}"
+                )
+
             trade = _trades[0]
-            
+
         data = strategy.data.reset_index(drop=True)
         start_date = trade.entry_date
         end_date = trade.exit_date
 
-        start_trade = data[(data.date >= start_date)].iloc[0].name -50 if start_date else 0
-        end_trade = data[(data.date <= end_date)].iloc[-1].name +50 if end_date else len(data)
+        start_trade = data[
+            (data.date >= start_date)].iloc[0].name - 50 if start_date else 0
+        end_trade = data[(data.date <= end_date
+                          )].iloc[-1].name + 50 if end_date else len(data)
         data = data.iloc[start_trade:end_trade]
         data.index = data.date
-        strategy._plot(data, entry_date=start_date, exit_date=end_date, type_=trade.type)
-        
-    def plot_indicators(strategy, list_of_indicators: list, start_date: str=None, end_date: str=None) -> None:
+        strategy._plot(data,
+                       entry_date=start_date,
+                       exit_date=end_date,
+                       type_=trade.type)
+
+    def plot_indicators(strategy,
+                        list_of_indicators: list,
+                        start_date: str = None,
+                        end_date: str = None) -> None:
         """Plot the indicators.
         
         Parameters
@@ -390,23 +432,176 @@ class Strategy(StrategyTester, IndicatorsParallel):
             The end date of the backtest.
         """
         chart = go.Candlestick(x=strategy.data.index,
-                    open=strategy.data.open,
-                    high=strategy.data.high,
-                    low=strategy.data.low,
-                    close=strategy.data.close)
+                               open=strategy.data.open,
+                               high=strategy.data.high,
+                               low=strategy.data.low,
+                               close=strategy.data.close)
         indicators = [chart]
         for indicator in list_of_indicators:
-            name = indicator["name"] if "name" in indicator else indicator["value"].name
-            indicators.append(go.Scatter(x=strategy.data.index,
-                                         y=indicator["value"],
-                                         name=name,
-                                         marker=dict(color=indicator["color"])))
+            name = indicator["name"] if "name" in indicator else indicator[
+                "value"].name
+            indicators.append(
+                go.Scatter(x=strategy.data.index,
+                           y=indicator["value"],
+                           name=name,
+                           marker=dict(color=indicator["color"])))
         layout = go.Layout(title="Indicators",
                            xaxis=dict(title="Date"),
                            yaxis=dict(title="Price"))
         fig = go.Figure(data=indicators, layout=layout)
         fig.show()
+
+    def plot_trades_with_indicators(strategy,
+                                    list_of_indicators: list = [],
+                                    start_date: str = None,
+                                    end_date: str = None,
+                                    just_loser: bool = False,
+                                    just_winner: bool = False) -> None:
+        """Plot the trades with indicators.
         
+        Parameters
+        ----------
+        list_of_indicators: list
+            The list of the indicators that you want to plot.
+            In the list, you must put the dictionary of the indicator.
+            example:
+            [{"name": "sma", "value": ta.sma(data.close, length=20), "color": "blue"}, {"name": "ema", "value": ta.ema(data.close, length=20), "color": "red"}]
+        start_date: str
+            The start date of the backtest.
+        end_date: str
+            The end date of the backtest.
+        """
+        # Prepare the data
+        data = strategy.data.copy()
+        data.index = pd.to_datetime(data.date, unit='ms')
+        if start_date:
+            data = data[(data.date >= start_date)]
+        if end_date:
+            data = data[(data.date <= end_date)]
+
+        # Prepare the trades
+        trades = pd.DataFrame(strategy.closed_positions +
+                              strategy.open_positions)
+        trades.entry_date = pd.to_datetime(trades.entry_date, unit='ms')
+        trades.exit_date = pd.to_datetime(trades.exit_date, unit='ms')
+        trades_long = trades[trades.type == "long"]
+        trades_short = trades[trades.type == "short"]
+
+        # Chart
+        chart = go.Candlestick(x=data.index,
+                               open=data.open,
+                               high=data.high,
+                               low=data.low,
+                               close=data.close)
+        layout = go.Layout(title="Trades",
+                           xaxis=dict(title="Date"),
+                           yaxis=dict(
+                               title='Price',
+                               fixedrange=False,
+                               autorange=True,
+                           ))
+        charts = [chart]
+        if not trades_long.empty:
+            green_arrow = go.Scatter(
+                x=trades_long.entry_date,
+                y=trades_long.entry_price,
+                text=(trades_long.entry_signal.astype(str) + "  "),
+                textfont=dict(color="green"),
+                textposition="middle left",
+                mode="markers+text",
+                hoverinfo="text",
+                hovertext=(
+                    "Entry date: " + trades_long.entry_date.astype(str) +
+                    "<br>Entry price: " + trades_long.entry_price.astype(str) +
+                    "<br>Entry signal: " +
+                    trades_long.entry_signal.astype(str) + "<br>Exit date: " +
+                    trades_long.exit_date.astype(str) + "<br>Exit price: " +
+                    trades_long.exit_price.astype(str) + "<br>Comment: " +
+                    trades_long.comment.astype(str)),
+                marker=dict(symbol="arrow-bar-right", color="green", size=10),
+                name="Long Entry")
+            charts.append(green_arrow)
+            if not trades_long.exit_date.empty:
+                gray_arrow_long = go.Scatter(
+                    x=trades_long.exit_date,
+                    y=trades_long.exit_price,
+                    text=trades_long.exit_signal,
+                    textfont=dict(color="gray"),
+                    textposition="top center",
+                    mode="markers+text",
+                    hoverinfo="text",
+                    hovertext=(
+                        "Entry date: " + trades_long.entry_date.astype(str) +
+                        "<br>Entry price: " +
+                        trades_long.entry_price.astype(str) +
+                        "<br>Entry signal: " +
+                        trades_long.entry_signal.astype(str) +
+                        "<br>Exit date: " + trades_long.exit_date.astype(str) +
+                        "<br>Exit price: " +
+                        trades_long.exit_price.astype(str) + "<br>Comment: " +
+                        trades_long.comment.astype(str)),
+                    marker=dict(symbol="arrow-bar-down", color="gray",
+                                size=10),
+                    name="Long Exit")
+                charts.append(gray_arrow_long)
+
+        if not trades_short.empty:
+            red_arrow = go.Scatter(
+                x=trades_short.entry_date,
+                y=trades_short.entry_price,
+                text=(trades_short.entry_signal.astype(str) + "  "),
+                textfont=dict(color="red"),
+                textposition="middle right",
+                mode="markers+text",
+                hoverinfo="text",
+                hovertext=("Entry date: " + trades_short.entry_date.astype(str) +
+                           "<br>Entry price: " + trades_short.entry_price.astype(str) +
+                           "<br>Entry signal: " + trades_short.entry_signal.astype(str) +
+                           "<br>Exit date: " + trades_short.exit_date.astype(str) +
+                           "<br>Exit price: " + trades_short.exit_price.astype(str) +
+                           "<br>Comment: " + trades_short.comment.astype(str)),
+                marker=dict(symbol="arrow-bar-left", color="red", size=10),
+                name="Short Entry")
+            charts.append(red_arrow)
+            if not trades_short.exit_date.empty:
+                gray_arrow_short = go.Scatter(
+                    x=trades_short.exit_date,
+                    y=trades_short.exit_price,
+                    text=trades_short.exit_signal,
+                    textfont=dict(color="gray"),
+                    textposition="bottom center",
+                    mode="markers+text",
+                    hoverinfo="text",
+                    hovertext=("Entry date: " + trades_short.entry_date.astype(str) +
+                               "<br>Entry price: " + trades_short.entry_price.astype(str) +
+                               "<br>Entry signal: " +
+                               trades_short.entry_signal.astype(str) + "<br>Exit date: " +
+                               trades_short.exit_date.astype(str) + "<br>Exit price: " +
+                               trades_short.exit_price.astype(str) + "<br>Comment: " +
+                               trades_short.comment.astype(str)),
+                    marker=dict(symbol="arrow-bar-up", color="gray", size=10),
+                    name="Short Exit")
+                charts.append(gray_arrow_short)
+
+        for indicator in list_of_indicators:
+            name = indicator["name"] if "name" in indicator else indicator[
+                "value"].name
+            # Check index is not datetime
+            if not isinstance(indicator["value"].index, pd.DatetimeIndex):
+            #     data.index = pd.to_datetime(indicator["value"].index, unit=)
+                indicator["value"].index = pd.to_datetime(
+                    indicator["value"].index, unit='ms')
+            charts.append(
+                go.Scatter(x=indicator["value"].index,
+                           y=indicator["value"],
+                           hoverinfo="text",
+                           hovertext=("Value: " + indicator["value"].astype(str)),
+                           name=name,
+                           marker=dict(color=indicator["color"])))
+
+        fig = go.Figure(data=charts, layout=layout)
+        fig.show()
+
     def result(strategy):
         """
         Description:
@@ -420,8 +615,8 @@ class Strategy(StrategyTester, IndicatorsParallel):
         if not isinstance(backtest, Backtest):
             return pd.Series(dict(strategy.parameters))
         else:
-            return pd.Series(backtest.result|dict(strategy.parameters))
-        
+            return pd.Series(backtest.result | dict(strategy.parameters))
+
     def just_long(self):
         """
         In this function, you can get backtest result of just long.
@@ -438,8 +633,8 @@ class Strategy(StrategyTester, IndicatorsParallel):
             return None
         # Backtest
         backtest = Backtest(trades_long, self.data, self._initial_capital)
-        return pd.Series(backtest.result|dict(self.parameters))
-    
+        return pd.Series(backtest.result | dict(self.parameters))
+
     def just_trades_long(self):
         """
         In this function, you can get series of trades of just long.
@@ -455,7 +650,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         if trades_long.exit_date.dropna().empty:
             return None
         return trades_long
-    
+
     def just_short(self):
         """
         In this function, you can get backtest result of just short.
@@ -472,8 +667,8 @@ class Strategy(StrategyTester, IndicatorsParallel):
             return None
         # Backtest
         backtest = Backtest(trades_short, self.data, self._initial_capital)
-        return pd.Series(backtest.result|dict(self.parameters))
-    
+        return pd.Series(backtest.result | dict(self.parameters))
+
     def just_trades_short(self):
         """
         In this function, you can get series of trades of just short.
@@ -489,7 +684,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
         if trades_short.exit_date.dropna().empty:
             return None
         return trades_short
-    
+
     def only_long(self) -> "Strategy":
         """
         In this function, you can get backtest when
@@ -503,12 +698,12 @@ class Strategy(StrategyTester, IndicatorsParallel):
             This function re-runs the strategy,
             except that it only has a long license.
         """
-        
+
         self._permission_short = False
         self.run()
         self._restart_permission()
         return self
-    
+
     def only_short(self) -> "Strategy":
         """
         In this function, you can get backtest when
@@ -526,14 +721,14 @@ class Strategy(StrategyTester, IndicatorsParallel):
         self.run()
         self._restart_permission()
         return self
-    
+
     def _restart_permission(self):
         """
         In this function, you can restart the permission of the strategy.
         """
         self._permission_long = True
         self._permission_short = True
-    
+
     def run(strategy):
         """Run the strategy."""
         strategy.set_init()
@@ -542,4 +737,3 @@ class Strategy(StrategyTester, IndicatorsParallel):
         strategy.start()
         strategy.condition()
         strategy.conditions.apply(strategy.trade, axis=1)
-        

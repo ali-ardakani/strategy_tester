@@ -10,19 +10,25 @@ from strategy_tester.telegram_bot import internet
 
 
 class ThreadedWebsocketManager(ThreadedWebsocketManager):
+    _count = 0
     async def start_listener(self, socket, path: str, callback):
         async with socket as s:
             while self._socket_running[path]:
                 try:
                     msg = await asyncio.wait_for(s.recv(), 5)
+                    self._count = 0
                 except asyncio.TimeoutError as e:
-                    msg = {
-                        "stream": "error",
-                        "data": {
-                            'e': 'connection error'
-                            },
-                        "error_msg": "timeout error"
-                        }
+                    self._count += 1
+                    if self._count > 5:
+                        msg = {
+                            "stream": "error",
+                            "data": {
+                                'e': 'connection error'
+                                },
+                            "error_msg": "timeout error"
+                            }
+                    else:
+                        continue
                 except BinanceAPIException as e:
                     msg = {
                         "stream": "error",
