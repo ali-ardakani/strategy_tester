@@ -1,4 +1,3 @@
-from symtable import Symbol
 from strategy_tester import StrategyTester
 from strategy_tester.backtest import Backtest
 from .indicator import IndicatorsParallel
@@ -8,6 +7,7 @@ import os
 from .sheet import Sheet
 from datetime import datetime
 import plotly.graph_objects as go
+from strategy_tester.plot import Plot
 
 
 class Strategy(StrategyTester, IndicatorsParallel):
@@ -252,6 +252,17 @@ class Strategy(StrategyTester, IndicatorsParallel):
     #         conditions = strategy.conditions[(strategy.data.date <= end_date)]
 
     #     new_instance = conditions
+    
+    def plot(self, *indicators):
+        """
+        Plot the strategy.
+        
+        Parameters
+        ----------
+        indicators: list
+            The list of the indicators that you want to plot.
+        """
+        Plot(self, indicators)
 
     @staticmethod
     def _plot(candles: pd.DataFrame,
@@ -459,6 +470,10 @@ class Strategy(StrategyTester, IndicatorsParallel):
                                     just_winner: bool = False) -> None:
         """Plot the trades with indicators.
         
+        Note
+        ----
+        You can only be True for just_loser and just_winner at the same time.
+        
         Parameters
         ----------
         list_of_indicators: list
@@ -470,18 +485,28 @@ class Strategy(StrategyTester, IndicatorsParallel):
             The start date of the backtest.
         end_date: str
             The end date of the backtest.
+        just_loser: bool
+            If True, only the loser trades will be plotted.
+        just_winner: bool
+            If True, only the winner trades will be plotted.
         """
         # Prepare the data
         data = strategy.data.copy()
         data.index = pd.to_datetime(data.date, unit='ms')
         if start_date:
-            data = data[(data.date >= start_date)]
+            data = data[(data.index >= start_date)]
         if end_date:
-            data = data[(data.date <= end_date)]
+            data = data[(data.index <= end_date)]
 
         # Prepare the trades
         trades = pd.DataFrame(strategy.closed_positions +
                               strategy.open_positions)
+        if just_loser and just_winner:
+            raise ValueError("just_loser and just_winner cannot be True at the same time.")
+        if just_loser:
+            trades = trades[trades.profit <= 0]
+        elif just_winner:
+            trades = trades[trades.profit > 0]
         trades.entry_date = pd.to_datetime(trades.entry_date, unit='ms')
         trades.exit_date = pd.to_datetime(trades.exit_date, unit='ms')
         trades_long = trades[trades.type == "long"]
@@ -601,6 +626,7 @@ class Strategy(StrategyTester, IndicatorsParallel):
 
         fig = go.Figure(data=charts, layout=layout)
         fig.show()
+        print(os.getcwd())
 
     def result(strategy):
         """

@@ -372,18 +372,18 @@ class User(Client, Strategy):
             # Check difference between date of
             # current candle and date of start_listen_key
             # equal or greater than 55 min
-            if (msg["data"]["E"] - strategy.start_listen_key) >= 1 * 60 * 1000:
-                try:
+            # if (msg["data"]["E"] - strategy.start_listen_key) >= 1 * 60 * 1000:
+            #     try:
 
-                    strategy.futures_stream_keepalive(strategy.listen_key)
-                    strategy.start_listen_key = msg["data"]["E"]
-                except BinanceAPIException as e:
-                    if "This listenKey does not exist." in e.message:
-                        msg = "Stream live error at \n"\
-                            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                        strategy._send_message(msg)
-                        strategy.threaded_websocket_manager_spot.stop()
-                        strategy._validate_data(strategy.data)
+            #         strategy.futures_stream_keepalive(strategy.listen_key)
+            #         strategy.start_listen_key = msg["data"]["E"]
+            #     except BinanceAPIException as e:
+            #         if "This listenKey does not exist." in e.message:
+            #             msg = "Stream live error at \n"\
+            #                 f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            #             strategy._send_message(msg)
+            #             strategy.threaded_websocket_manager_spot.stop()
+            #             strategy._validate_data(strategy.data)
 
         elif msg["data"]["e"] == "listenKeyExpired":
             # Get new listen key and restart stream live account
