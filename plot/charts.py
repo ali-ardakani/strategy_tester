@@ -1,3 +1,4 @@
+from re import L
 import pandas as pd
 import numpy as np
 # from strategy_tester import Strategy
@@ -25,12 +26,13 @@ class Plot:
             Input("date-slider", "value"),
             Input("trades-type", "value"),
             Input("trades-profitability", "value"),
+            Input("logarithmic", "value"),
         )(self._set_chart)
         self._dash.callback(Output("tabs-content", "children"),
                             Input("tabs", "value"))(self._trades)
         self._first_called = True
         self.previous_range = None
-        self._dash.run_server(debug=True)
+        self._dash.run_server(debug=False, host="0.0.0.0", port=8050)
 
     @staticmethod
     def _validate_data(data):
@@ -76,6 +78,14 @@ class Plot:
                     .round("1s").strftime("%Y-%m-%d"))
         layout = html.Div([
             html.H4('candlestick chart'),
+            dcc.Checklist(
+                id="logarithmic",
+                options=[
+                    {'label': 'Logarithmic', 'value': 'log'},
+                ],
+                value=[],
+                labelStyle={'display': 'inline-block'}
+            ),
             dcc.Graph(id="graph", style={"height": "calc(100vh - 200px)"}),
             dcc.RangeSlider(
                 id='date-slider',
@@ -140,8 +150,8 @@ class Plot:
         return layout
 
     def _set_chart(self, active_cell, range_date, trades_type,
-                   trades_profitability):
-        print(active_cell)
+                   trades_profitability, logarithmic):
+        print(logarithmic)
         trade_monthly_html = None
         # Prepare the data
         if self._first_called:
@@ -207,10 +217,16 @@ class Plot:
                     trades = trades[trades["profit"] > 0]
                 elif trades_profitability == "losing":
                     trades = trades[trades["profit"] < 0]
+            if "log" in logarithmic:
+                trades["entry_price"] = np.log10(trades["entry_price"])
+                trades["exit_price"] = np.log10(trades["exit_price"])
             trades.entry_date = pd.to_datetime(trades.entry_date, unit="ms")
             trades.exit_date = pd.to_datetime(trades.exit_date, unit="ms")
             longs = trades[trades["type"] == "long"]
             shorts = trades[trades["type"] == "short"]
+
+        if "log" in logarithmic:
+            data[["open", "high", "low", "close"]] = np.log10( data[["open", "high", "low", "close"]])
 
         # Chart
         chart = go.Candlestick(x=data.index,
@@ -328,6 +344,9 @@ class Plot:
 
             indicator_value = indicator["value"][indicator["value"].index.isin(
                 data.index)]
+            
+            if "log" in logarithmic:
+                indicator_value = np.log10(indicator_value)
 
             charts.append(
                 go.Scatter(x=indicator_value.index,
@@ -348,6 +367,8 @@ class Plot:
     def _trades(self, value):
         if value == "trades":
             trades = self.trades
+            from pprint import pprint
+            pprint(trades.to_dict("records"))
             return dash_table.DataTable(
                 id="tbl",
                 columns=[{
@@ -355,6 +376,7 @@ class Plot:
                     "id": i
                 } for i in trades.columns],
                 data=trades.to_dict("records"),
+                page_action='none',
                 style_cell={
                     "textAlign": "left",
                     "fontSize": "20px",

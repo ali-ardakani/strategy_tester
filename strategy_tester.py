@@ -505,5 +505,5 @@ class StrategyTester:
 
     def plot_initial_capital(strategy):
         strategy.cash_series.index = pd.to_datetime(strategy.cash_series.index,
-                                                    unit="ms")
-        strategy.cash_series.plot(label="Initial Capital Chart")
+                                                    unit="ms").round("1s")
+        return strategy.cash_series
