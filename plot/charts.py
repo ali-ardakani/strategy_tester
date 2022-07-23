@@ -1,10 +1,13 @@
-from re import L
 import pandas as pd
 import numpy as np
 # from strategy_tester import Strategy
 from dash import Dash, dcc, html, Input, Output, dash_table
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
+import uuid
+import io
+# import makeresponse as mr
+from flask import make_response
 
 
 class Plot:
@@ -13,6 +16,12 @@ class Plot:
         self.strategy = strategy
         self.trades = self.strategy.list_of_trades()
         self.indicators = indicators
+        monthly_backtest = self.strategy.periodic_calc("1M")
+        self.monthly_backtest = pd.DataFrame(monthly_backtest.values(),
+                            index=monthly_backtest.keys())
+        self.monthly_backtest.reset_index(inplace=True)
+        self.monthly_backtest.rename(columns={"index": "Last trade of that month"},
+                    inplace=True)
         self.data = self._validate_data(strategy.data)
         self._dash = Dash(self.__class__.__name__,
                           external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -30,9 +39,11 @@ class Plot:
         )(self._set_chart)
         self._dash.callback(Output("tabs-content", "children"),
                             Input("tabs", "value"))(self._trades)
+        self._dash.callback(Output("export-xlsx-download", "data"),
+                            Input("export-xlsx", "n_clicks"))(self._export_excel)
         self._first_called = True
         self.previous_range = None
-        self._dash.run_server(debug=False, host="0.0.0.0", port=8050)
+        self._dash.run_server(debug=True, host="0.0.0.0", port=8050)
 
     @staticmethod
     def _validate_data(data):
@@ -132,6 +143,10 @@ class Plot:
                 value="all",
                 style={"width": "30%"},
             ),
+            html.Br(),
+            html.Button("Export to xlsx", id="export-xlsx"),
+            html.Br(),
+            dcc.Download(id="export-xlsx-download"),
             # Tab for list of trades and backtest results
             dcc.Tabs(id="tabs",
                      value="trades",
@@ -151,7 +166,6 @@ class Plot:
 
     def _set_chart(self, active_cell, range_date, trades_type,
                    trades_profitability, logarithmic):
-        print(logarithmic)
         trade_monthly_html = None
         # Prepare the data
         if self._first_called:
@@ -367,8 +381,6 @@ class Plot:
     def _trades(self, value):
         if value == "trades":
             trades = self.trades
-            from pprint import pprint
-            pprint(trades.to_dict("records"))
             return dash_table.DataTable(
                 id="tbl",
                 columns=[{
@@ -398,7 +410,6 @@ class Plot:
                     "color": "#135788"
                 }],
                 style_table={
-                    "maxHeight": "300px",
                     "overflowY": "scroll"
                 },
             )
@@ -434,25 +445,18 @@ class Plot:
                     "color": "#135788"
                 }],
                 style_table={
-                    "maxHeight": "300px",
                     "overflowY": "scroll"
                 },
             )
         elif value == "monthly":
-            monthly_backtest = self.strategy.periodic_calc("1M")
-            df = pd.DataFrame(monthly_backtest.values(),
-                              index=monthly_backtest.keys())
-            self.monthly_backtest = df
-            df.reset_index(inplace=True)
-            df.rename(columns={"index": "Last trade of that month"},
-                      inplace=True)
+
             return dash_table.DataTable(
                 id="tbl",
                 columns=[{
                     "name": i,
                     "id": i
-                } for i in df.columns],
-                data=df.to_dict("records"),
+                } for i in self.monthly_backtest.columns],
+                data=self.monthly_backtest.to_dict("records"),
                 style_cell={
                     "textAlign": "left",
                     "fontSize": "20px",
@@ -474,10 +478,30 @@ class Plot:
                     "color": "#135788"
                 }],
                 style_table={
-                    "maxHeight": "300px",
                     "overflowY": "scroll"
                 },
             )
 
-    def _trades_monthly(self, active_cell):
-        print(active_cell)
+    def _export_excel(self, n_clicks):
+        """
+        Export backtest, trades, monthly trades to seprate sheet
+        """
+        if n_clicks:
+            # Create a Pandas Excel writer using XlsxWriter as the engine and save as buffer
+            # Random name for the file and download
+            buffer = io.BytesIO()
+            writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
+            # Write backtest
+            self.strategy.result().to_excel(writer, sheet_name='Backtest')
+            # Write trades
+            self.trades.to_excel(writer, sheet_name='Trades')
+            # Write monthly trades
+            self.monthly_backtest.to_excel(writer, sheet_name='Monthly trades')
+            # Close the Pandas Excel writer and save the Excel sheet as buffer
+            writer.save()
+            # Get the value of the buffer
+            excel_buffer = buffer.getvalue()
+            # Reset the buffer to start
+            buffer.seek(0)
+            return dcc.send_bytes(src=excel_buffer, filename='backtest.xlsx')
+            
