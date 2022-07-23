@@ -88,7 +88,7 @@ class Plot:
                 pd.to_datetime(label, unit="ms")\
                     .round("1s").strftime("%Y-%m-%d"))
         layout = html.Div([
-            html.H4('candlestick chart'),
+            html.H1(self.strategy.__class__.__name__),
             dcc.Checklist(
                 id="logarithmic",
                 options=[
@@ -396,7 +396,7 @@ class Plot:
                     "fontWeight": "normal"
                 },
                 style_header={
-                    "fontWeight": "bold",
+                    "BTCBUSD": "bold",
                     "fontSize": "20px",
                     "fontFamily": "Arial",
                     "backgroundColor": "#f1f6ff",
