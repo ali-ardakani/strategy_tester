@@ -708,6 +708,7 @@ class User(Client, Strategy):
                         f"{strategy._round_time(close_time)}"\
                         f"\n\nOpen Price: {trade.entry_price}"\
                         f"\nContract: {quantity}"\
+                        f"\nEntry amount: {trade.entry_price * quantity}"\
                         f"\nComment: {comment}"
                     strategy._send_image(plot, caption=caption)
 
@@ -825,6 +826,7 @@ class User(Client, Strategy):
                             f"Comment: {comment}\n"\
                             f"Profit: {position.profit}\n"\
                             f"Profit Percent: {position.profit_percent}\n"\
+                            f"Amount of profit/loss: {position.profit*position.contract}\n"\
                             f"Draw Down: {position.draw_down}\n"\
                             f"Entry Price: {position.entry_price}\n"\
                             f"Entry Signal: {position.entry_signal}\n"\
