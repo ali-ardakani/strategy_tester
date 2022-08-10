@@ -24,7 +24,8 @@ class Plot:
                     inplace=True)
         self.data = self._validate_data(strategy.data)
         self._dash = Dash(self.__class__.__name__,
-                          external_stylesheets=[dbc.themes.BOOTSTRAP])
+                          external_stylesheets=[dbc.themes.BOOTSTRAP],
+                          )
         self._dash.layout = self._create_layout()
         self._dash.callback(
             Output("graph", "figure"),
@@ -43,7 +44,8 @@ class Plot:
                             Input("export-xlsx", "n_clicks"))(self._export_excel)
         self._first_called = True
         self.previous_range = None
-        self._dash.run_server(debug=True, host="0.0.0.0", port=8050)
+        # Enable auto reload of the app and browser
+        self._dash.run_server(debug=False, host="0.0.0.0", port=8050, threaded=True, use_reloader=True)
 
     @staticmethod
     def _validate_data(data):

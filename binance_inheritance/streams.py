@@ -1,16 +1,20 @@
 import asyncio
+import json
 from threading import Thread
 from typing import Callable
 
 import websockets as ws
 from binance import ThreadedWebsocketManager
 from binance.client import Client
+from typing import Optional, List, Dict, Callable, Any
+
 from binance.exceptions import BinanceAPIException
 from strategy_tester.telegram_bot import internet
 
 
 class ThreadedWebsocketManager(ThreadedWebsocketManager):
     _count = 0
+        
     async def start_listener(self, socket, path: str, callback):
         async with socket as s:
             while self._socket_running[path]:
@@ -37,7 +41,6 @@ class ThreadedWebsocketManager(ThreadedWebsocketManager):
                             },
                         "error_msg": e.message
                         }
-
                 if msg["stream"] == "error":
                     connected = internet()
                     msg["connected_check"] = connected
@@ -46,6 +49,13 @@ class ThreadedWebsocketManager(ThreadedWebsocketManager):
                     continue
                 callback(msg)
         del self._socket_running[path]
+        
+    def _reconnect(self, socket, path):
+        self._socket_running[path] = False
+        socket.close()
+        socket = ws.connect(path)
+        self._socket_running[path] = True
+        return socket
 
     def futures_start_user_socket(self, callback) -> str:
         url = "wss://fstream.binance.com/ws/"
@@ -55,7 +65,7 @@ class ThreadedWebsocketManager(ThreadedWebsocketManager):
             params={}
         )
 
-
+        
 class StreamUserData(Thread):
     """
     Instant access to account changes in futures.
@@ -81,7 +91,7 @@ class StreamUserData(Thread):
                  api_key: str,
                  api_secret: str,
                  callback: Callable,
-                 timeout: int = 5):
+                 timeout: int = 3):
 
         self.api_key = api_key
         self.api_secret = api_secret
@@ -90,6 +100,12 @@ class StreamUserData(Thread):
         self.timeout = float(timeout)
 
         self.client = Client(api_key, api_secret)
+        
+        self._listen_key = self.client.futures_stream_get_listen_key()
+        self.client.futures_stream_keepalive(self._listen_key)
+        
+        self._path = self.BASEPATH + self._listen_key
+        
         self.loop = asyncio.new_event_loop()
         super().__init__(target=self._start)
 
@@ -98,27 +114,36 @@ class StreamUserData(Thread):
         async with ws.connect(self._path) as websocket:
             while True:
                 try:
-                    msg = await asyncio.wait_for(websocket.recv(),
-                                                 timeout=self.timeout)
+                    msg = await asyncio.wait_for(websocket.recv(), self.timeout)
+                    if message:
+                        message = json.loads(message)
+                        if message["e"] == "listenKeyExpired":
+                            self._listen_key = self.client.futures_stream_get_listen_key()
+                            message = await websocket.recv()
+                            message = json.loads(message)
+                        msg = {
+                            "stream": "user",
+                            "data": message
+                        }
+                        self.callback(msg)
+                    else:
+                        continue
                 except Exception as e:
                     if e.__class__ == BinanceAPIException:
-                        msg = e.message
+                        message = e.message
                     elif e.__class__ == asyncio.TimeoutError:
-                        msg = "Timeout error"
+                        message = "Timeout error"
                     else:
-                        msg = e
+                        message = e
                     msg = {
                         "stream": "error",
                         "data": {
                             'e': "stream live error"
                         },
-                        "error_msg": e
+                        "error_msg": message
                     }
-                if msg:
                     self.callback(msg)
-                else:
-                    continue
-
+    
     def _start(self):
         """
         Start streaming.
@@ -136,9 +161,25 @@ class StreamUserData(Thread):
             This endpoint is running in the background every 55 minutes.
         """
         while True:
-            self._listen_key = self.client.futures_stream_get_listen_key()
-            self._path = self.BASEPATH + self._listen_key
-            await asyncio.sleep(20)
+            try:
+                await asyncio.create_task(self._keepalive_listen_key())
+            except Exception as e:
+                msg = {
+                    "stream": "error",
+                    "data": {
+                        'e': "stream live error"
+                    },
+                    "error_msg": f"\n{e}"
+                }
+                self.callback(msg)
+            await asyncio.sleep(3 * 60)
+            
+    async def _keepalive_listen_key(self):
+        """
+        Get listen key.
+        """
+        print("keep alive")
+        self.client.futures_stream_keepalive(self._listen_key)
 
     def _validate_callback(self, callback: Callable):
         """

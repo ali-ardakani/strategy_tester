@@ -1,20 +1,22 @@
+import asyncio
 from datetime import datetime
 import io
 import math
 import random
 import re
-from time import time
+from subprocess import call
+from time import sleep, time
 from typing import Dict, Optional
 from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+import threading
 import plotly.graph_objects as go
 from binance import Client
 from binance.exceptions import BinanceAPIException
 
-from strategy_tester.binance_inheritance import (ThreadedWebsocketManager,
-                                                 StreamUserData)
+from strategy_tester.binance_inheritance import (ThreadedWebsocketManager)
 from strategy_tester.commands import CalculatorTrade
 from strategy_tester.decorator import validate_float
 from strategy_tester.models import Trade
@@ -57,11 +59,7 @@ class User(Client, Strategy):
             strategy._validate_pair(primary_pair, secondary_pair)
         strategy.threaded_websocket_manager_spot = \
             ThreadedWebsocketManager(api_key, api_secret)
-        # strategy.stream_user_data = StreamUserData(
-        #     api_key=api_key,
-        #     api_secret=api_secret,
-        #     callback=strategy.__stream_live_account)
-        # strategy.stream_user_data.start()
+        strategy.threaded_websocket_manager_spot.start()
         strategy.current_candle = None
         strategy._open_positions = []
         strategy._closed_positions = []
@@ -88,7 +86,6 @@ class User(Client, Strategy):
         strategy.keep_time_limit_chunk = strategy.\
             _validate_keep_time_limit_chunk(keep_time_limit_chunk)
         # Start the thread's activity.
-        strategy.threaded_websocket_manager_spot.start()
         # Create a tmp dataframe for add kline websocket data
         # In order to receive the data correctly
         # and not to interrupt their time
@@ -313,16 +310,27 @@ class User(Client, Strategy):
         # Run stream live account
         try:
             strategy.listen_key = strategy.futures_stream_get_listen_key()
+            strategy.futures_stream_keepalive(strategy.listen_key)
+
+            strategy.futures_stream_keepalive_thread = threading.Thread( # noqa: E501
+                target=strategy._keepalive,)
+            strategy.futures_stream_keepalive_thread.start()
             strategy.start_listen_key = data.iloc[-1].date
             strategy.stream = strategy.symbol.lower() + "@kline_" + \
                 strategy.interval
 
+            print("Start listen key: {}".format(strategy.listen_key))
             strategy.stream_live_account = \
                 strategy.threaded_websocket_manager_spot\
                     .start_multiplex_socket(
                         callback=strategy.__stream_live_account,
-                        streams=[strategy.stream],
+                        streams=[strategy.stream,],
                     )
+            
+            strategy.threaded_websocket_manager_spot.start_futures_multiplex_socket(
+                callback=print,
+                streams=[strategy.listen_key,],
+            )
 
         except Exception as e:
             strategy._send_error_message(e)
@@ -335,6 +343,15 @@ class User(Client, Strategy):
         strategy.close = data.close
         strategy.volume = data.volume
         strategy.last_candle = data.date.iloc[-1]
+        
+    def _keepalive(self):
+        while True:
+            try:
+                print("mostepha")
+                self.futures_stream_keepalive(self.listen_key)
+                sleep(60)
+            except Exception as e:
+                self._send_error_message(e)
 
     def __stream_live_account(strategy, msg: dict):
         """
@@ -1263,3 +1280,8 @@ class User(Client, Strategy):
         Restart client and threads.
         """
         self._validate_data(data=None)
+        
+    async def _futures_keepalive(self):
+        while True:
+            await self.futures_stream_keepalive(self.listen_key)
+            asyncio.sleep(25)

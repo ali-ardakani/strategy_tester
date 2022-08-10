@@ -58,8 +58,8 @@ class StrategyTester:
     
     def set_init(strategy):
         strategy._contract = False
-        strategy._cash = 10000
-        strategy._initial_capital = 10000
+        strategy._cash = 100000
+        strategy._initial_capital = 100000
         strategy.long = "long"
         strategy.short = "short"
 
@@ -135,6 +135,57 @@ class StrategyTester:
             return tuple(profits)[0] if profits else None
         else:
             return None
+        
+    @property
+    def net_profit(strategy):
+        if strategy.closed_positions:
+            # Return sum of all profits
+            return sum([trade.profit for trade in strategy.closed_positions]) - strategy._initial_capital
+        else:
+            return 0
+        
+    @property
+    def max_runup(strategy):
+        """Returns the maximum run up of the open trade, i.e., the maximum possible profit during the trade."""
+        if strategy.open_positions:
+            # Filter data from entry_date to current_candle
+            data = strategy.data[(strategy.data.index >= strategy.open_positions[0].entry_date) & (strategy.data.date <= strategy.current_candle)]
+            run_up = CalculatorTrade._run_up(strategy.open_positions[0], data)
+            
+            return run_up
+        else:
+            return 0
+    
+    @property
+    def drawdown(strategy):
+        """Returns the maximum drawdown of the strategy."""
+        if strategy.open_positions:
+            data = strategy.data[(strategy.data.index >= strategy.open_positions[0].entry_date) & (strategy.data.date <= strategy.current_candle)]
+            draw_down = CalculatorTrade._draw_down(strategy.open_positions[0], data)
+            
+            return draw_down
+        else:
+            return 0
+        
+    @property
+    def open_profit(strategy):
+        if strategy.open_positions:
+            current_candle = strategy._current_candle_calc()
+            trade = strategy.open_positions[0]
+            profit = current_candle.close-trade.entry_price if trade.type == "long" else trade.entry_price-current_candle.close
+            return profit
+        else:
+            return 0
+        
+    @property
+    def open_profit_percent(strategy):
+        if strategy.open_positions:
+            current_candle = strategy._current_candle_calc()
+            trade = strategy.open_positions[0]
+            profit = current_candle.close-trade.entry_price if trade.type == "long" else trade.entry_price-current_candle.close
+            return profit * 100/trade.entry_price
+        else:
+            return 0
 
     def entry(strategy,
               signal: str,
